@@ -5,8 +5,6 @@
         srfi-13
         srfi-14
         (chicken process signal)
-        (chicken string)
-        (chicken format)
         (chicken process-context))
 
 
@@ -104,7 +102,7 @@
                               (else                1))))
                         ((action consumed) (state1 (cddr args))))
 
-             ;(printf "from state1 I got (~a ~a)~n" action consumed)  ; DELETE ME
+             ;(print "from state1 I got (" action " " consumed ")" action consumed)  ; DELETE ME
              ;(print "and args is " args) ; DELETE ME
 
              (if (and (null? action) (zero? consumed) (not (null? (cddr args))))
@@ -171,6 +169,6 @@
           (list signal/term signal/int signal/pipe signal/quit))
 
 ;; do your thing
-(process (parse-command-line (command-line-arguments)))
 ;(import (chicken pretty-print))  ; DELETE ME
 ;(pretty-print (parse-command-line (command-line-arguments)))  ; DELETE ME
+(process (parse-command-line (command-line-arguments)))
