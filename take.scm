@@ -4,9 +4,9 @@
         srfi-1
         srfi-13
         srfi-14
+        (chicken process signal)
         (chicken string)
         (chicken format)
-        (chicken port)
         (chicken process-context))
 
 
@@ -161,7 +161,16 @@
   (state1-helper args 0))
 
 
+;;; main body of code
 
+;; restore the cursor when this program is interrupted
+(define (cleanup signal)
+  (print (show-cursor))
+  (exit))
+(for-each (lambda (s) (set-signal-handler! s cleanup))
+          (list signal/term signal/int signal/pipe signal/quit))
+
+;; do your thing
 (process (parse-command-line (command-line-arguments)))
-;(import (chicken pretty-print))
-;(pretty-print (parse-command-line (command-line-arguments)))
+;(import (chicken pretty-print))  ; DELETE ME
+;(pretty-print (parse-command-line (command-line-arguments)))  ; DELETE ME
