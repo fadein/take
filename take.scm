@@ -11,7 +11,6 @@
 
 
 ; Parse the command-line arguments into a list of alists
-
 (define (parse-command-line args)
   ; Prepare the command-line arguments by removing punctuation
   (define cs:punct-minus- (char-set-delete char-set:punctuation #\-))
@@ -23,6 +22,30 @@
           directives)))
 
 
+;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
+;; blinking colons
+(define (seconds->timestamp sec)
+  (define zero-pad
+    (lambda (n)
+      (if (< -1 n 10)
+        (string-concatenate `("0" ,(number->string n)))
+        (number->string n))))
+  (let ((sec (inexact->exact (truncate sec))))
+    (let* ((hours (quotient sec 3600))
+           (rem (remainder sec 3600))
+           (mins (quotient rem 60))
+           (sec (remainder rem 60))
+           (h?ms (if (zero? hours)
+                     (list mins sec)
+                     (list hours mins sec))))
+      (string-concatenate
+        (let build ((l h?ms))
+          (if (null? (cdr l))
+            (cons (zero-pad (car l)) '())
+            (cons (zero-pad (car l)) (cons (if (even? sec) ":" ".") (build (cdr l))))))))))
+
+
+;; Given a list of directives alists, print the message and countdown for the given time
 (define (process directives)
   (define (process-h directives)
     (when (not (null? directives))
@@ -35,18 +58,13 @@
             (print*
               "\r"
               (erase-line)
-              seconds)
+              (seconds->timestamp seconds))
             (sleep 1)
             (loop (sub1 seconds))))
-        (newline))
+        (print "\n"))
       (process-h (cdr directives))))
   
-  ;(set-buffering-mode! (current-output-port) #:none)
-  ;(import (chicken pretty-print))
-  ;(pretty-print directives)  ; DELETE ME
-
-  (process-h directives)
-  )
+(process-h directives))
 
 
 
