@@ -5,11 +5,8 @@
         srfi-13
         srfi-14
         (chicken string)
-        (chicken file)
         (chicken format)
-        (chicken io)
-        (chicken random)
-        (chicken pathname)
+        (chicken port)
         (chicken process-context))
 
 
@@ -23,9 +20,35 @@
          (directives (state0 args)))
     (if (null? directives)
         (usage)
-        (begin
-          (import (chicken pretty-print))
-          (pretty-print directives)))))
+          directives)))
+
+
+(define (process directives)
+  (define (process-h directives)
+    (when (not (null? directives))
+      (let* ((this (car directives))
+             (seconds (cadr (assq 'time this)))
+             (to-do (string-join (cdr (assq 'to this)))))
+        (print to-do (set-title to-do))
+        (let loop ((seconds seconds))
+          (when (not (zero? seconds))
+            (print*
+              "\r"
+              (erase-line)
+              seconds)
+            (sleep 1)
+            (loop (sub1 seconds))))
+        (newline))
+      (process-h (cdr directives))))
+  
+  ;(set-buffering-mode! (current-output-port) #:none)
+  ;(import (chicken pretty-print))
+  ;(pretty-print directives)  ; DELETE ME
+
+  (process-h directives)
+  )
+
+
 
 (define (usage)
   (print "Usage: take 5 minutes to ... then take 30 seconds to ...")
@@ -104,4 +127,4 @@
 
 
 
-(parse-command-line (command-line-arguments))
+(process (parse-command-line (command-line-arguments)))
