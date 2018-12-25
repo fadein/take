@@ -56,27 +56,32 @@
             (state0 (cdr args)))))))
 
 (define (state1 args)
-  (let loop ((args args) (action '()) (consumed 0))
-    (if (null? args)
-        (values (reverse action) consumed)
 
-        (let* ((this-arg (car args))
-               (this-num (string->number this-arg))
-               (this-sym (string->symbol this-arg)))
+  ; remove an initial "to"
+  (if (string-ci= (car args) "to")
+      (state1 (cdr args))
 
-          (cond
-            ;; if I see a number, transition back to state0 without consuming it
-            ((number? this-num)
-             (values (reverse action) consumed))
+      (let loop ((args args) (action '()) (consumed 0))
+        (if (null? args)
+            (values (reverse action) consumed)
 
-            ;; skip over filler words like "take", "then", "to"
-            ((or (string-ci= this-arg "take")
-                 (string-ci= this-arg "then"))
-             (loop (cdr args) action (add1 consumed)))
+            (let* ((this-arg (car args))
+                   (this-num (string->number this-arg))
+                   (this-sym (string->symbol this-arg)))
 
-            ;; else, accumulate into a list
-            (else
-              (loop (cdr args) (cons this-arg action) (add1 consumed))))))))
+              (cond
+                ;; if I see a number, transition back to state0 without consuming it
+                ((number? this-num)
+                 (values (reverse action) consumed))
+
+                ;; skip over filler words like "take", "then", "to"
+                ((or (string-ci= this-arg "take")
+                     (string-ci= this-arg "then"))
+                 (loop (cdr args) action (add1 consumed)))
+
+                ;; else, accumulate into a list
+                (else
+                  (loop (cdr args) (cons this-arg action) (add1 consumed)))))))))
 
 
 
