@@ -4,17 +4,28 @@
         srfi-1
         srfi-13
         srfi-14
+        (chicken port)
         (chicken process signal)
-        (chicken process-context))
+        (chicken process-context)
+        (chicken random)
+        unicode-utils)
 
 
-(define *VERSION* "0.1")
+(define *VERSION* "0.2")
 (define (usage)
   (print "take v" *VERSION*
          "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
   (exit 1))
 
 
+
+; Dimensions of the terminal
+(define *rows*)
+(define *cols*)
+(define (window-size-changed! signal)
+  (let-values (((rows cols) (terminal-size (current-output-port))))
+	(set! *rows* rows)
+	(set! *cols* cols)))
 
 
 ; Parse the command-line arguments into a list of alists
@@ -54,21 +65,17 @@
 
 ;; Given a list of directives alists, print the message and countdown for the given time
 (define (process directives)
+  (define counters
+    (list simple-countdown bar-countup bar-countdown))
+
   (define (process-h directives)
     (when (not (null? directives))
       (let* ((this (car directives))
              (seconds (cadr (assq 'time this)))
              (to-do (string-join (cdr (assq 'to this)))))
         (print* "\a" (set-title to-do))
-        (let loop ((seconds seconds))
-          (when (>= seconds 0)
-            (print*
-              "\r"
-              (erase-line)
-              (seconds->timestamp seconds)
-              " " to-do)
-            (sleep 1)
-            (loop (sub1 seconds))))
+        ; chose a counting display function at random
+        ((list-ref counters (pseudo-random-integer (length counters))) seconds to-do)
         (print "\n"))
       (process-h (cdr directives))))
 
@@ -77,6 +84,49 @@
   (print* (show-cursor)))
 
 
+(define (simple-countdown seconds to-do)
+  (let loop ((seconds seconds))
+    (when (>= seconds 0)
+      (print*
+        "\r"
+        (erase-line)
+        (seconds->timestamp seconds)
+        " " to-do)
+      (sleep 1)
+      (loop (sub1 seconds)))))
+
+
+(define (bar-countup seconds to-do)
+  (let* ((msg-width (+ 6 (string-length to-do)))
+         (free-spaces (- *cols* msg-width))
+         (secs-per-col (/ free-spaces seconds )))
+  (let loop ((seconds seconds))
+    (when (>= seconds 0)
+      (print*
+        "\r"
+        (erase-line)
+        (seconds->timestamp seconds)
+        " " to-do
+        (unicode-make-string (- free-spaces (truncate (* seconds secs-per-col))) #\u2588))
+      (sleep 1)
+      (loop (sub1 seconds))))))
+
+
+(define (bar-countdown seconds to-do)
+  (let* ((msg-width (+ 6 (string-length to-do)))
+         (free-spaces (- *cols* msg-width))
+         (secs-per-col (/ free-spaces seconds )))
+
+  (let loop ((seconds seconds))
+    (when (>= seconds 0)
+      (print*
+        "\r"
+        (erase-line)
+        (seconds->timestamp seconds)
+        " " to-do
+        (unicode-make-string (truncate (* seconds secs-per-col)) #\u2588))
+      (sleep 1)
+      (loop (sub1 seconds))))))
 
 ; parse command-line arguments given in the form of "take 5 minutes to ... then take 30 seconds to ..."
 ;
@@ -170,6 +220,11 @@
   (exit))
 (for-each (lambda (s) (set-signal-handler! s cleanup))
           (list signal/term signal/int signal/pipe signal/quit))
+(set-signal-handler! signal/winch window-size-changed!)
+(window-size-changed! #f)
+
+;(print "The window is " *cols* "x" *rows*)  ; DELETE ME
+
 
 ;; do your thing
 ;(import (chicken pretty-print))  ; DELETE ME
