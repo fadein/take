@@ -8,6 +8,15 @@
         (chicken process-context))
 
 
+(define *VERSION* "0.1")
+(define (usage)
+  (print "take v" *VERSION*
+         "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
+  (exit 1))
+
+
+
+
 ; Parse the command-line arguments into a list of alists
 (define (parse-command-line args)
   ; Prepare the command-line arguments by removing punctuation
@@ -66,12 +75,6 @@
   (print* (hide-cursor))
   (process-h directives)
   (print* (show-cursor)))
-
-
-
-(define (usage)
-  (print "Usage: take 5 minutes to ... then take 30 seconds to ...")
-  (exit 1))
 
 
 
