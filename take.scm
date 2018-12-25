@@ -105,9 +105,23 @@
                         ((action consumed) (state1 (cddr args))))
 
              ;(printf "from state1 I got (~a ~a)~n" action consumed)  ; DELETE ME
+             ;(print "and args is " args) ; DELETE ME
 
+             (if (and (null? action) (zero? consumed) (not (null? (cddr args))))
+                 ;; when more than one time specification are given in a row without
+                 ;; an intervening action we add them up
+                 (begin
+                   ;(print "an incomplete timespec, parsing further") (sleep 1) ; DELETE ME
+                        (let* ((the-rest (state0 (cddr args)))
+                               (this-one (car the-rest))
+                               (i-time-spec (assq 'time this-one)))
+                          ;(print "the-rest:" the-rest)  ; DELETE ME
+                          ;(print "this-one:" this-one)  ; DELETE ME
+                          ;(print "i-time-spec:" i-time-spec)  ; DELETE ME
+                          (set-car! (cdr i-time-spec) (+ (cadr i-time-spec) time-spec))
+                          the-rest))
              (cons `((time ,time-spec) (to ,@action))
-                   (state0 (drop (cddr args) consumed)))))
+                   (state0 (drop (cddr args) consumed))))))
 
           (else
             ;(print "state0: else")  ; DELETE ME
@@ -149,3 +163,5 @@
 
 
 (process (parse-command-line (command-line-arguments)))
+;(import (chicken pretty-print))
+;(pretty-print (parse-command-line (command-line-arguments)))
