@@ -6,11 +6,11 @@ RMDIR   ?= rmdir
 
 BINDIR  ?= /usr/local/bin
 
-test: take
-	./take 20 seconds to say hi
-
 take: take.scm
 	$(CSC) $(CSC_OPTIONS) $^
+
+test: take
+	./take 2 seconds to say hi then take 5 seconds to smile then take 10 seconds to really think about it
 
 install: take
 	$(INSTALL) -d -m 775 $(BINDIR)
