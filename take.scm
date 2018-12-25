@@ -52,19 +52,22 @@
       (let* ((this (car directives))
              (seconds (cadr (assq 'time this)))
              (to-do (string-join (cdr (assq 'to this)))))
-        (print to-do (set-title to-do))
+        (print* (set-title to-do))
         (let loop ((seconds seconds))
-          (when (not (zero? seconds))
+          (when (>= seconds 0)
             (print*
               "\r"
               (erase-line)
-              (seconds->timestamp seconds))
+              (seconds->timestamp seconds)
+              " " to-do)
             (sleep 1)
             (loop (sub1 seconds))))
         (print "\n"))
       (process-h (cdr directives))))
-  
-(process-h directives))
+
+  (print* (hide-cursor))
+  (process-h directives)
+  (print* (show-cursor)))
 
 
 
