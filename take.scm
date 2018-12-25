@@ -52,7 +52,7 @@
       (let* ((this (car directives))
              (seconds (cadr (assq 'time this)))
              (to-do (string-join (cdr (assq 'to this)))))
-        (print* (set-title to-do))
+        (print* "\a" (set-title to-do))
         (let loop ((seconds seconds))
           (when (>= seconds 0)
             (print*
