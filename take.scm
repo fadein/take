@@ -21,19 +21,26 @@
 
   (let* ((args (map (lambda (s) (string-delete cs:punct-minus- s)) args))
          (directives (state0 args)))
-    (import (chicken pretty-print))
-    (pretty-print directives)))
+    (if (null? directives)
+        (usage)
+        (begin
+          (import (chicken pretty-print))
+          (pretty-print directives)))))
 
+(define (usage)
+  (print "Usage: take 5 minutes to ... then take 30 seconds to ...")
+  (exit 1))
 
 
 
 ; parse command-line arguments given in the form of "take 5 minutes to ... then take 30 seconds to ..."
 ;
+;
 ; '(((time 300) (to ...))
 ;   ((time 30) (to ...)))
 ; TODO - these functions need better names
 (define (state0 args)
-  (print "state0:" args)   ; DELETE ME
+  ;(print "state0:" args)   ; DELETE ME
   ;; look for a number followed by a time quantifier, skip over (filler) words like "then", "take"
   (if (null? args)
       '()
@@ -53,19 +60,19 @@
                               (else                1))))
                         ((action consumed) (state1 (cddr args))))
 
-             (printf "from state1 I got (~a ~a)~n" action consumed)  ; DELETE ME
+             ;(printf "from state1 I got (~a ~a)~n" action consumed)  ; DELETE ME
 
              (cons `((time ,time-spec) (to ,@action))
                    (state0 (drop (cddr args) consumed)))))
 
           (else
-            (print "state0: else")  ; DELETE ME
+            ;(print "state0: else")  ; DELETE ME
             (state0 (cdr args)))))))
 
 
 (define (state1 args)
   (define (state1-helper args consumed)
-    (print "  state1:" args)   ; DELETE ME
+    ;(print "  state1:" args)   ; DELETE ME
 
     ; remove an initial "to"
     (if (and (not (null? args)) (string-ci= (car args) "to"))
