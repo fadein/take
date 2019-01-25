@@ -11,7 +11,7 @@
         unicode-utils)
 
 
-(define *VERSION* "0.2")
+(define *VERSION* "0.3")
 (define (usage)
   (print "take v" *VERSION*
          "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
@@ -66,18 +66,24 @@
 ;; Given a list of directives alists, print the message and countdown for the given time
 (define (process directives)
   (define counters
-    (list simple-countdown bar-countup bar-countdown))
+    (map (lambda (color) (lambda (seconds to-do) (reverse-countdown seconds to-do color)))
+         '(fg-red fg-green fg-yellow fg-blue fg-magenta fg-cyan fg-white)))
 
   (define (process-h directives)
     (when (not (null? directives))
       (let* ((this (car directives))
              (seconds (cadr (assq 'time this)))
              (to-do (string-join (cdr (assq 'to this)))))
-        (print* "\a" (set-title to-do))
-        ; chose a counting display function at random
+        (print* (set-title to-do))
+        ; choose a counting display function at random
         ((list-ref counters (pseudo-random-integer (length counters))) seconds to-do)
-        (print "\n"))
-      (process-h (cdr directives))))
+
+        ; ring the bell thrice
+        (do ((i 3 (sub1 i)))
+          ((zero? i) (newline))
+          (print* "\a") (sleep 1))
+
+      (process-h (cdr directives)))))
 
   (print* (hide-cursor))
   (process-h directives)
@@ -128,8 +134,23 @@
       (sleep 1)
       (loop (sub1 seconds))))))
 
+
+(define (reverse-countdown seconds to-do #!optional (color 'fg-white))
+  (let* ((secs-per-col (/ *cols* seconds))
+         (msg (string-pad-right to-do (- *cols* 6))))
+    (let loop ((seconds seconds))
+      (when (>= seconds 0)
+        ; form the string, padded with spaces, putting the reverse attr in the right place
+        (let* ((line (string-concatenate (list (seconds->timestamp seconds) " " msg)))
+               (bar-width (truncate (* seconds secs-per-col)))
+               (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
+               (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
+          (print* "\r" (erase-line) reversed regular))
+        (sleep 1)
+        (loop (sub1 seconds))))))
+
+
 ; parse command-line arguments given in the form of "take 5 minutes to ... then take 30 seconds to ..."
-;
 ;
 ; '(((time 300) (to ...))
 ;   ((time 30) (to ...)))
