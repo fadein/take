@@ -3,6 +3,7 @@ CSC_OPTIONS ?=
 INSTALL ?= install
 RM      ?= rm
 RMDIR   ?= rmdir
+SUDO    ?= sudo
 
 BINDIR  ?= /usr/local/bin
 
@@ -13,11 +14,11 @@ test: take
 	./take 2 seconds to say hi then take 5 seconds to smile then take 10 seconds to really think about it
 
 install: take
-	$(INSTALL) -d -m 775 $(BINDIR)
-	$(INSTALL) -p -m 755 -t $(BINDIR) $^
+	$(SUDO) $(INSTALL) -d -m 775 $(BINDIR)
+	$(SUDO) $(INSTALL) -p -m 755 -t $(BINDIR) $^
 
 uninstall:
-	-$(RM) $(BINDIR)/take
+	-$(SUDO) $(RM) $(BINDIR)/take
 
 clean:
 	-rm -f *.o *.c *.link core take
