@@ -9,6 +9,7 @@
         (chicken process signal)
         (chicken process-context)
         (chicken random)
+        (chicken time)
         unicode-utils)
 
 
@@ -18,15 +19,6 @@
          "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
   (exit 1))
 
-
-
-; Dimensions of the terminal
-(define *rows*)
-(define *cols*)
-(define (window-size-changed! signal)
-  (let-values (((rows cols) (terminal-size (current-output-port))))
-	(set! *rows* rows)
-	(set! *cols* cols)))
 
 
 ; Parse the command-line arguments into a list of alists
@@ -77,6 +69,7 @@
              (to-do (string-join (cdr (assq 'to this)))))
         (print* (set-title to-do))
         ; choose a counting display function at random
+        (set! *keep-counting-down* #t)
         ((list-ref counters (pseudo-random-integer (length counters))) seconds to-do)
 
         ; ring the bell thrice
@@ -138,23 +131,30 @@
 
 (define (reverse-countdown seconds to-do #!optional (color 'fg-white))
   (let* ((secs-per-col (/ *cols* seconds))
-         (msg (string-pad-right to-do (- *cols* 6))))
-               (let loop ((time-left seconds))
-                 (call/cc (lambda (restart)
-                            (when (>= time-left 0)
-                              (cond
-                                ((char-ready?)
-                                 (read-line)
-                                 (restart))
-                                (else
-                                  ; form the string, padded with spaces, putting the reverse attr in the right place
-                                  (let* ((line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
-                                         (bar-width (truncate (* time-left secs-per-col)))
-                                         (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
-                                         (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
-                                    (print* "\r" (erase-line) reversed regular))
-                                  (sleep 1)
-                                  (loop (sub1 time-left))))))))))
+         (msg (string-pad-right to-do (- *cols* 6)))
+         (restart #f))
+
+    ;; The lambda invoked by call/cc sets time-left to the initial value of 'seconds'
+    ;; and assigns this continuation to the name 'restart'
+    (let loop ((time-left
+                 (call/cc (lambda (k)
+                            (set! restart k)
+                            seconds))))
+      (when (and (>= time-left 0) *keep-counting-down*)
+        (print "*keep-counting-down* is " *keep-counting-down*)   ; DELETE ME
+        (cond
+          ((char-ready?) ;; STDIN is a line-buffered port - this only happens upon ENTER
+           (read-line) ;; drain STDIN
+           (restart seconds)) ;; use the continuation to reset time-left to seconds
+          (else
+            ; form the string, padded with spaces, putting the reverse attr in the right place
+            (let* ((line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
+                   (bar-width (truncate (* time-left secs-per-col)))
+                   (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
+                   (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
+              (print* "\r" (erase-line) reversed regular))
+            (sleep 1)
+            (loop (sub1 time-left))))))))
 
 
 ; parse command-line arguments given in the form of "take 5 minutes to ... then take 30 seconds to ..."
@@ -240,14 +240,40 @@
   (state1-helper args 0))
 
 
-;;; main body of code
+;; main body of code
+
+;;; signal handlers
+(define *keep-counting-down* #t)
+(define *last-interrupt* 0)
+
+; skip the current timer; exit if this is invoked twice within 1 second
+(define (skip-countdown signal)
+  (let ((now (current-seconds)))
+    (print "skip countdown @" now )  ; DELETE ME
+    (cond
+      ((zero? (- now *last-interrupt*))
+        (print "  getting out of dodge")  ; DELETE ME
+        (cleanup 0))
+      (else
+       (print "  stop this countdown")  ; DELETE ME
+       (set! *keep-counting-down* #f)
+       (set! *last-interrupt* now)))))
+(set-signal-handler! signal/int skip-countdown)
 
 ;; restore the cursor when this program is interrupted
 (define (cleanup signal)
   (print (show-cursor))
   (exit))
 (for-each (lambda (s) (set-signal-handler! s cleanup))
-          (list signal/term signal/int signal/pipe signal/quit))
+          (list signal/term signal/pipe signal/quit))
+
+;; Dimensions of the terminal
+(define *rows*)
+(define *cols*)
+(define (window-size-changed! signal)
+  (let-values (((rows cols) (terminal-size (current-output-port))))
+	(set! *rows* rows)
+	(set! *cols* cols)))
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
 
