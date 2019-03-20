@@ -30,8 +30,8 @@
 
 ; Parse the command-line arguments into a list of alists
 (define (parse-command-line args)
-  ; Prepare the command-line arguments by removing punctuation
-  (define cs:punct-minus- (char-set-delete char-set:punctuation #\-))
+  ; Prepare the command-line arguments by removing (most) punctuation
+  (define cs:punct-minus- (char-set-delete char-set:punctuation #\[ #\] #\( #\) #\/ #\' #\& #\- #\:))
 
   (let* ((args (map (lambda (s) (string-delete cs:punct-minus- s)) args))
          (directives (state0 args)))
