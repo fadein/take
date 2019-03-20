@@ -4,6 +4,7 @@
         srfi-1
         srfi-13
         srfi-14
+        (chicken io)
         (chicken port)
         (chicken process signal)
         (chicken process-context)
@@ -138,16 +139,22 @@
 (define (reverse-countdown seconds to-do #!optional (color 'fg-white))
   (let* ((secs-per-col (/ *cols* seconds))
          (msg (string-pad-right to-do (- *cols* 6))))
-    (let loop ((seconds seconds))
-      (when (>= seconds 0)
-        ; form the string, padded with spaces, putting the reverse attr in the right place
-        (let* ((line (string-concatenate (list (seconds->timestamp seconds) " " msg)))
-               (bar-width (truncate (* seconds secs-per-col)))
-               (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
-               (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
-          (print* "\r" (erase-line) reversed regular))
-        (sleep 1)
-        (loop (sub1 seconds))))))
+               (let loop ((time-left seconds))
+                 (call/cc (lambda (restart)
+                            (when (>= time-left 0)
+                              (cond
+                                ((char-ready?)
+                                 (read-line)
+                                 (restart))
+                                (else
+                                  ; form the string, padded with spaces, putting the reverse attr in the right place
+                                  (let* ((line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
+                                         (bar-width (truncate (* time-left secs-per-col)))
+                                         (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
+                                         (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
+                                    (print* "\r" (erase-line) reversed regular))
+                                  (sleep 1)
+                                  (loop (sub1 time-left))))))))))
 
 
 ; parse command-line arguments given in the form of "take 5 minutes to ... then take 30 seconds to ..."
