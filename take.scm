@@ -69,13 +69,14 @@
              (to-do (string-join (cdr (assq 'to this)))))
         (print* (set-title to-do))
         ; choose a counting display function at random
-        (set! *keep-counting-down* #t)
+        (set! *cancel-countdown* #f)
         ((list-ref counters (pseudo-random-integer (length counters))) seconds to-do)
 
-        ; ring the bell thrice
-        (do ((i 3 (sub1 i)))
-          ((zero? i) (newline))
-          (print* "\a") (sleep 1))
+        ; ring the bell thrice if this countdown wasn't cancelled
+        (unless *cancel-countdown*
+          (do ((i 3 (sub1 i)))
+            ((zero? i) (newline))
+            (print* "\a") (sleep 1)))
 
       (process-h (cdr directives)))))
 
@@ -140,11 +141,11 @@
                  (call/cc (lambda (k)
                             (set! restart k)
                             seconds))))
-      (when (and (>= time-left 0) *keep-counting-down*)
-        (print "*keep-counting-down* is " *keep-counting-down*)   ; DELETE ME
+      (when (and (>= time-left 0) (not *cancel-countdown*))
         (cond
           ((char-ready?) ;; STDIN is a line-buffered port - this only happens upon ENTER
            (read-line) ;; drain STDIN
+           (print* (cursor-up 1))
            (restart seconds)) ;; use the continuation to reset time-left to seconds
           (else
             ; form the string, padded with spaces, putting the reverse attr in the right place
@@ -243,20 +244,17 @@
 ;; main body of code
 
 ;;; signal handlers
-(define *keep-counting-down* #t)
+(define *cancel-countdown* #f)
 (define *last-interrupt* 0)
 
 ; skip the current timer; exit if this is invoked twice within 1 second
 (define (skip-countdown signal)
   (let ((now (current-seconds)))
-    (print "skip countdown @" now )  ; DELETE ME
     (cond
       ((zero? (- now *last-interrupt*))
-        (print "  getting out of dodge")  ; DELETE ME
         (cleanup 0))
       (else
-       (print "  stop this countdown")  ; DELETE ME
-       (set! *keep-counting-down* #f)
+       (set! *cancel-countdown* #t)
        (set! *last-interrupt* now)))))
 (set-signal-handler! signal/int skip-countdown)
 
