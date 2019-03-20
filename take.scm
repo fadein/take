@@ -13,7 +13,7 @@
         unicode-utils)
 
 
-(define *VERSION* "0.3")
+(define *VERSION* "0.4")
 (define (usage)
   (print "take v" *VERSION*
          "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
