@@ -1,4 +1,5 @@
 take
+*.link
 *.c
 *.o
-core
+*core

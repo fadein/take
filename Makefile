@@ -1,5 +1,5 @@
 CSC ?= csc
-CSC_OPTIONS ?= 
+CSC_OPTIONS ?= -static
 INSTALL ?= install
 RM      ?= rm
 RMDIR   ?= rmdir
