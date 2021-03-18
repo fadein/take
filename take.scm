@@ -13,7 +13,7 @@
         unicode-utils)
 
 
-(define *VERSION* "0.4")
+(define *VERSION* "0.5")
 (define (usage)
   (print "take v" *VERSION*
          "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
@@ -131,16 +131,13 @@
 
 
 (define (reverse-countdown seconds to-do #!optional (color 'fg-white))
-  (let* ((secs-per-col (/ *cols* seconds))
-         (msg (string-pad-right to-do (- *cols* 6)))
-         (restart #f))
+  (let ((restart #f))
 
     ;; The lambda invoked by call/cc sets time-left to the initial value of 'seconds'
     ;; and assigns this continuation to the name 'restart'
-    (let loop ((time-left
-                 (call/cc (lambda (k)
-                            (set! restart k)
-                            seconds))))
+    (let loop ((time-left (call/cc (lambda (k)
+                                     (set! restart k)
+                                     seconds))))
       (when (and (>= time-left 0) (not *cancel-countdown*))
         (cond
           ((char-ready?) ;; STDIN is a line-buffered port - this only happens upon ENTER
@@ -148,14 +145,21 @@
            (print* (cursor-up 1))
            (restart seconds)) ;; use the continuation to reset time-left to seconds
           (else
-            ; form the string, padded with spaces, putting the reverse attr in the right place
-            (let* ((line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
+            (let* (; re-calculate the screen width on each update
+                   (secs-per-col (/ *cols* seconds))
+                   ; form the message, padded with spaces, putting the reverse attr in the right place
+                   (msg (string-pad-right to-do (- *cols* 6)))
+                   (line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
                    (bar-width (truncate (* time-left secs-per-col)))
                    (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
                    (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
               (print* "\r" (erase-line) reversed regular))
             (sleep 1)
-            (loop (sub1 time-left))))))))
+            (if *winched*
+              (begin
+                (set! *winched* #f)
+                (loop time-left))
+              (loop (sub1 time-left)))))))))
 
 
 ; parse command-line arguments given in the form of "take 5 minutes to ... then take 30 seconds to ..."
@@ -265,13 +269,17 @@
 (for-each (lambda (s) (set-signal-handler! s cleanup))
           (list signal/term signal/pipe signal/quit))
 
-;; Dimensions of the terminal
+;; Update dimensions of the terminal upon receipt of SIGWINCH
 (define *rows*)
 (define *cols*)
+;; SIGWINCH interrupts the sleep routine, which drains the timer as I resize the window
+;; When this flag has a truthy value the timer doesn't decrement
+(define *winched* #f)
 (define (window-size-changed! signal)
   (let-values (((rows cols) (terminal-size (current-output-port))))
 	(set! *rows* rows)
-	(set! *cols* cols)))
+	(set! *cols* cols))
+  (set! *winched* signal))
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
 
@@ -281,4 +289,5 @@
 ;; do your thing
 ;(import (chicken pretty-print))  ; DELETE ME
 ;(pretty-print (parse-command-line (command-line-arguments)))  ; DELETE ME
+
 (process (parse-command-line (command-line-arguments)))
