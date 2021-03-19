@@ -1,9 +1,11 @@
 #!/usr/bin/csi -s
 
 (import ansi-escape-sequences
+        miscmacros
         srfi-1
         srfi-13
         srfi-14
+        stty
         (chicken io)
         (chicken port)
         (chicken process signal)
@@ -130,36 +132,44 @@
       (loop (sub1 seconds))))))
 
 
+(define (drain-stdin)
+  (while (char-ready? (current-input-port)) (read-char)))
+
 (define (reverse-countdown seconds to-do #!optional (color 'fg-white))
-  (let ((restart #f))
+  (define restart #f)
 
     ;; The lambda invoked by call/cc sets time-left to the initial value of 'seconds'
     ;; and assigns this continuation to the name 'restart'
-    (let loop ((time-left (call/cc (lambda (k)
-                                     (set! restart k)
-                                     seconds))))
+    (let loop ((time-left (call/cc (lambda (k) (set! restart k) seconds))))
       (when (and (>= time-left 0) (not *cancel-countdown*))
-        (cond
-          ((char-ready?) ;; STDIN is a line-buffered port - this only happens upon ENTER
-           (read-line) ;; drain STDIN
-           (print* (cursor-up 1))
-           (restart seconds)) ;; use the continuation to reset time-left to seconds
-          (else
-            (let* (; re-calculate the screen width on each update
-                   (secs-per-col (/ *cols* seconds))
-                   ; form the message, padded with spaces, putting the reverse attr in the right place
-                   (msg (string-pad-right to-do (- *cols* 6)))
-                   (line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
-                   (bar-width (truncate (* time-left secs-per-col)))
-                   (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
-                   (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
-              (print* "\r" (erase-line) reversed regular))
-            (sleep 1)
-            (if *winched*
-              (begin
-                (set! *winched* #f)
-                (loop time-left))
-              (loop (sub1 time-left)))))))))
+
+        (while (char-ready? (current-input-port))
+               (case (read-char)
+                 ((#\return #\newline #\r #\R)
+                  (drain-stdin)
+                  (restart seconds))
+
+                 ((#\z #\Z)
+                  (set! time-left 0))
+
+                 ((#\q #\Q)
+                  (exit))))
+
+        (let* (; re-calculate the screen width on each update
+               (secs-per-col (/ *cols* seconds))
+               ; form the message, padded with spaces, putting the reverse attr in the right place
+               (msg (string-pad-right to-do (- *cols* 6)))
+               (line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
+               (bar-width (truncate (* time-left secs-per-col)))
+               (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
+               (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
+          (print* "\r" (erase-line) reversed regular))
+        (sleep 1)
+        (if *winched*
+          (begin
+            (set! *winched* #f)
+            (loop time-left))
+          (loop (sub1 time-left))))))
 
 
 ; parse command-line arguments given in the form of "take 5 minutes to ... then take 30 seconds to ..."
@@ -264,6 +274,7 @@
 
 ;; restore the cursor when this program is interrupted
 (define (cleanup signal)
+  (stty '(icanon echo))
   (print (show-cursor))
   (exit))
 (for-each (lambda (s) (set-signal-handler! s cleanup))
@@ -282,6 +293,14 @@
   (set! *winched* signal))
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
+
+
+; Sets the buffering-mode for the file associated with `PORT` to `MODE`, which
+; should be one of the keywords `#:full`, `#:line` or `#:none`. If `BUFSIZE` is
+; specified it determines the size of the buffer to be used (if any).
+(stty '((not icanon echo)))
+(set-buffering-mode! (current-input-port) #:full 0)
+
 
 ;(print "The window is " *cols* "x" *rows*)  ; DELETE ME
 
