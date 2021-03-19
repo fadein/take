@@ -11,11 +11,10 @@
         (chicken process signal)
         (chicken process-context)
         (chicken random)
-        (chicken time)
-        unicode-utils)
+        (chicken time))
 
 
-(define *VERSION* "0.5")
+(define *VERSION* "1.0")
 (define (usage)
   (print "take v" *VERSION*
          "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
@@ -61,7 +60,7 @@
 ;; Given a list of directives alists, print the message and countdown for the given time
 (define (process directives)
   (define counters
-    (map (lambda (color) (lambda (seconds to-do) (reverse-countdown seconds to-do color)))
+    (map (lambda (color) (lambda (seconds to-do) (countdown seconds to-do color)))
          '(fg-red fg-green fg-yellow fg-blue fg-magenta fg-cyan fg-white)))
 
   (define (process-h directives)
@@ -84,58 +83,10 @@
 
   (print* (hide-cursor))
   (process-h directives)
-  (print* (show-cursor)))
+  (cleanup! 'normal-exit))
 
 
-(define (simple-countdown seconds to-do)
-  (let loop ((seconds seconds))
-    (when (>= seconds 0)
-      (print*
-        "\r"
-        (erase-line)
-        (seconds->timestamp seconds)
-        " " to-do)
-      (sleep 1)
-      (loop (sub1 seconds)))))
-
-
-(define (bar-countup seconds to-do)
-  (let* ((msg-width (+ 6 (string-length to-do)))
-         (free-spaces (- *cols* msg-width))
-         (secs-per-col (/ free-spaces seconds )))
-  (let loop ((seconds seconds))
-    (when (>= seconds 0)
-      (print*
-        "\r"
-        (erase-line)
-        (seconds->timestamp seconds)
-        " " to-do
-        (unicode-make-string (- free-spaces (truncate (* seconds secs-per-col))) #\u2588))
-      (sleep 1)
-      (loop (sub1 seconds))))))
-
-
-(define (bar-countdown seconds to-do)
-  (let* ((msg-width (+ 6 (string-length to-do)))
-         (free-spaces (- *cols* msg-width))
-         (secs-per-col (/ free-spaces seconds )))
-
-  (let loop ((seconds seconds))
-    (when (>= seconds 0)
-      (print*
-        "\r"
-        (erase-line)
-        (seconds->timestamp seconds)
-        " " to-do
-        (unicode-make-string (truncate (* seconds secs-per-col)) #\u2588))
-      (sleep 1)
-      (loop (sub1 seconds))))))
-
-
-(define (drain-stdin)
-  (while (char-ready? (current-input-port)) (read-char)))
-
-(define (reverse-countdown seconds to-do #!optional (color 'fg-white))
+(define (countdown seconds to-do #!optional (color 'fg-white))
   (define restart #f)
 
     ;; The lambda invoked by call/cc sets time-left to the initial value of 'seconds'
@@ -146,11 +97,21 @@
         (while (char-ready? (current-input-port))
                (case (read-char)
                  ((#\return #\newline #\r #\R)
-                  (drain-stdin)
+                  (while (char-ready? (current-input-port)) (read-char))  ; drain STDIN
                   (restart seconds))
 
-                 ((#\z #\Z)
+                 ((#\z #\Z #\0)
+                  (set! *cancel-countdown* #t)
                   (set! time-left 0))
+
+                 ; add or subtract 5% of the timer
+                 ((#\+ #\=)
+                  (set! time-left
+                    (min seconds (+ time-left (inexact->exact (round (* seconds 0.05)))))))
+
+                 ((#\- #\_)
+                  (set! time-left
+                    (max 0 (- time-left (inexact->exact (round (* seconds 0.05)))))))
 
                  ((#\q #\Q)
                   (exit))))
@@ -255,7 +216,10 @@
   (state1-helper args 0))
 
 
-;; main body of code
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; MAIN BODY OF CODE ;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 ;;; signal handlers
 (define *cancel-countdown* #f)
@@ -266,47 +230,42 @@
   (let ((now (current-seconds)))
     (cond
       ((zero? (- now *last-interrupt*))
-        (cleanup 0))
+        (cleanup! 'skipped-timer))
       (else
        (set! *cancel-countdown* #t)
        (set! *last-interrupt* now)))))
 (set-signal-handler! signal/int skip-countdown)
 
+
 ;; restore the cursor when this program is interrupted
-(define (cleanup signal)
+(define (cleanup! unused)
   (stty '(icanon echo))
   (print (show-cursor))
   (exit))
-(for-each (lambda (s) (set-signal-handler! s cleanup))
+(for-each (lambda (s) (set-signal-handler! s cleanup!))
           (list signal/term signal/pipe signal/quit))
 
-;; Update dimensions of the terminal upon receipt of SIGWINCH
+
+;; Update the dimensions of the terminal upon receipt of SIGWINCH
+;;
+;; SIGWINCH can interrut the sleep function, and is continually fired as the
+;; terminal window is resized which quickly drains the timer.
+;;
+;; When *winched* has a truthy value the timer doesn't decrement
+(define *winched* #f)
 (define *rows*)
 (define *cols*)
-;; SIGWINCH interrupts the sleep routine, which drains the timer as I resize the window
-;; When this flag has a truthy value the timer doesn't decrement
-(define *winched* #f)
-(define (window-size-changed! signal)
+(define (window-size-changed! sig)
   (let-values (((rows cols) (terminal-size (current-output-port))))
 	(set! *rows* rows)
 	(set! *cols* cols))
-  (set! *winched* signal))
+  (set! *winched* sig))
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
 
 
-; Sets the buffering-mode for the file associated with `PORT` to `MODE`, which
-; should be one of the keywords `#:full`, `#:line` or `#:none`. If `BUFSIZE` is
-; specified it determines the size of the buffer to be used (if any).
+; -icanon disables the terminal's line-buffering
 (stty '((not icanon echo)))
-(set-buffering-mode! (current-input-port) #:full 0)
 
-
-;(print "The window is " *cols* "x" *rows*)  ; DELETE ME
-
-
-;; do your thing
-;(import (chicken pretty-print))  ; DELETE ME
-;(pretty-print (parse-command-line (command-line-arguments)))  ; DELETE ME
 
 (process (parse-command-line (command-line-arguments)))
