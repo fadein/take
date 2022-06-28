@@ -7,20 +7,41 @@ SUDO    ?= sudo
 
 BINDIR  ?= /usr/local/bin
 
-take: take.scm
+PROG    = take
+
+
+$(PROG): $(PROG).scm
 	$(CSC) $(CSC_OPTIONS) $^
 
-test: take
+test: $(PROG)
 	./take 2 seconds to say hi then take 5 seconds to smile then take 10 seconds to really think about it
 
-install: take
+install: $(PROG)
 	$(SUDO) $(INSTALL) -d -m 775 $(BINDIR)
 	$(SUDO) $(INSTALL) -p -m 755 -t $(BINDIR) $^
 
 uninstall:
-	-$(SUDO) $(RM) $(BINDIR)/take
+	-$(SUDO) $(RM) $(BINDIR)/$(PROG)
 
 clean:
-	-rm -f *.o *.c *.link core take
+	-rm -f *.o *.c *.link *core $(PROG)
 
-.PHONY: clean install test
+setup:
+	chicken-install -sudo -from-list eggs.list
+
+define HELP =
+Makefile for "$(PROG)"
+
+Available targets:
+    test		Build & test the executable "$(PROG)" [DEFAULT TARGET]
+    $(PROG)		Build the executable
+    install		Install the executable
+    uninstall		Uninstall the executable
+    clean		Clean up the build directory
+    setup		Install any required eggs
+
+endef
+
+help: ; $(info $(HELP)) @:
+
+.PHONY: test install uninstall clean setup help
