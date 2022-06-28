@@ -15,10 +15,10 @@
 (import stty)
 
 
-(define *VERSION* "1.0")
+(define *VERSION* "1.1")
 (define (usage)
   (print "take v" *VERSION*
-         "\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
+         "\n\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
   (exit 1))
 
 
@@ -115,7 +115,7 @@
                     (max 0 (- time-left (inexact->exact (round (* seconds 0.05)))))))
 
                  ((#\q #\Q)
-                  (exit))))
+                  (cleanup! 'quit))))
 
         (let* (; re-calculate the screen width on each update
                (secs-per-col (/ *cols* seconds))
@@ -241,8 +241,9 @@
 ;; restore the cursor when this program is interrupted
 (define (cleanup! unused)
   (stty '(icanon echo))
-  (print (show-cursor))
+  (print* (show-cursor))
   (exit))
+
 (for-each (lambda (s) (set-signal-handler! s cleanup!))
           (list signal/term signal/pipe signal/quit))
 
@@ -258,15 +259,17 @@
 (define *cols*)
 (define (window-size-changed! sig)
   (let-values (((rows cols) (terminal-size (current-output-port))))
-	(set! *rows* rows)
-	(set! *cols* cols))
+    (set! *rows* rows)
+    (set! *cols* cols))
   (set! *winched* sig))
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
 
 
 ; -icanon disables the terminal's line-buffering
-(stty '((not icanon echo)))
+(with-stty '(not icanon echo)
+           (lambda ()
+             (process (parse-command-line (command-line-arguments)))
+             (print* (show-cursor))))
 
-
-(process (parse-command-line (command-line-arguments)))
+; vim: set expandtab:
