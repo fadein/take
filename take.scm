@@ -1,17 +1,17 @@
 #!/usr/bin/csi -s
 
-(import ansi-escape-sequences
-        miscmacros
-        srfi-1
-        srfi-13
-        srfi-14
-        stty
-        (chicken io)
-        (chicken port)
-        (chicken process signal)
-        (chicken process-context)
-        (chicken random)
-        (chicken time))
+(import (chicken io))
+(import (chicken port))
+(import (chicken process signal))
+(import (chicken process-context))
+(import (chicken random))
+(import (chicken time))
+(import ansi-escape-sequences)
+(import miscmacros)
+(import srfi-1)
+(import srfi-13)
+(import srfi-14)
+(import stty)
 
 
 (define *VERSION* "1.0")
