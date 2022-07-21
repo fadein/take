@@ -9,12 +9,15 @@
 
 ; this string should be broken into words on spaces and punctuation,
 ; converted to lower case and made into symbols
-; "seven hundred fifty four thousand six hundred thirty three"
+; "take ten minutes and thirty-three seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"
+;  => (((time 633) (to cruise with wifey)) ((time 475) (to eat yummy food)))
+;
+;  First, I need to identify which tokens are time words
+;  either find the last time word, or look for a special token such as "to" or "and"
+
+
 (define (condition-input str)
   (map string?->symbol (string-split (string-downcase str) " -,.")))
-
-(define (c str)
-  (condition-input str))
 
 (define (symbols->numbers xs)
   (define name->value '((zero 0)
@@ -72,42 +75,43 @@
 (define (pow1000? x)
   (memq x '(1000 1000000 1000000000 1000000000000)))
 
-(define (within x lo hi)
-  (<= lo x hi))
-
-(define (parse str)
-  (let helper ((lst (symbols->numbers (condition-input str))) (accum 0) (tot 0))
+(define (parse-words->numbers lst)
+  (let helper ((lst lst) (accum 0) (tot 0))
     (cond
       ((null? lst) ; case 1
-       (print "case 1")  ; DELETE ME
+       ; (print "case 1")  ; DELETE ME
        (+ tot accum))
       ((= 1 (length lst))
        (let ((no1 (car lst)))
          (if (pow1000? no1)
            (begin
-             (printf "case 2 no1:~a lst:~a accum:~a tot:~a~n" no1 lst accum tot)  ; DELETE ME
+             ; (printf "case 2 no1:~a lst:~a accum:~a tot:~a~n" no1 lst accum tot)  ; DELETE ME
              (+ tot (* accum no1)))  ; case 2
            (begin
-             (printf "case 3 no1:~a lst:~a accum:~a tot:~a~n" no1 lst accum tot)  ; DELETE ME
+             ; (printf "case 3 no1:~a lst:~a accum:~a tot:~a~n" no1 lst accum tot)  ; DELETE ME
              (+ tot accum no1))))) ; case 3 - not sure why I considered these two cases separately on paper...
       (else
         (let ((no1 (car lst))
               (no2 (cadr lst)))
           (cond
             ((pow1000? no1)  ; case 4
-             (printf "case 4 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
+             ; (printf "case 4 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
              (helper (cdr lst) 0 (+ tot (* no1 accum))))
 
             ((and (<= 1 no1 9) (pow1000? no2))  ; case 6 
-             (printf "case 6 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
+             ; (printf "case 6 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
              (helper (cddr lst) 0 
                      (+ tot (* (+ accum no1) no2))))
 
             ((and (<= 1 no1 9) (pow10? no2))  ; case 5
-             (printf "case 5 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
+             ; (printf "case 5 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
              (helper (cddr lst) (+ accum (* no1 no2)) tot))
 
             (else
               (printf "(helper no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)
               (error "how did this happen?"))))))))
+
+(define (p str)
+  (parse-words->numbers (symbols->numbers (condition-input str))))
+
 
