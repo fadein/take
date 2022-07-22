@@ -105,29 +105,16 @@
               (printf "(helper no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)
               (error "how did this happen?"))))))))
 
-(define (p str)
-  (parse-numbers (symbols->numbers (condition-input str))))
-
 (define (words->numbers words)
   (parse-numbers (symbols->numbers words)))
 
 
-; this string should be broken into words on spaces and punctuation,
-; converted to lower case and made into symbols
-; "take ten minutes and thirty-three seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"
-;  => (((time 633) (to cruise with wifey)) ((time 475) (to eat yummy food)))
-;
-;  First, I need to identify which tokens are time words
-;  either find the last time word, or look for a special token such as "to" or "and"
-(define test (string-split "take ten minutes and thirty-three seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"))
-
-
 ; condition input for timespec->seconds
 (define (ci-ts str)
-  (string-split (string-downcase str) " -,."))
+  (flatten (map (lambda (s) (string-split (string-downcase s) " -,.")) str)))
 
 (define (timespec->seconds timespec)
-  (let helper ((timespec timespec) (accum '()) (total-seconds 0))
+  (let helper ((timespec (ci-ts timespec)) (accum '()) (total-seconds 0))
     ; (printf "timespec:~a accum:~a tot:~a~n" timespec accum total-seconds)  ; DELETE ME
     (cond
       ((null? timespec)
@@ -180,3 +167,36 @@
 (define (recognize-action? item)
   (or (string-ci=? item "take")
       (string-ci=? item "then")))
+
+
+(define (process-timespec words)
+  (let-values (((timespec rest) (break recognize-timespec? words)))
+    (let ((seconds (timespec->seconds timespec)))
+      (values seconds rest))))
+
+(define (process-action words)
+  (break recognize-action? words))
+
+(define (process-args args)
+  (if (null? args)
+    '()
+    (let-values (((seconds rest) (process-timespec args)))
+      (let-values (((action rest) (process-action rest)))
+        (cons (list (list 'time seconds) action) (process-args rest))))))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; TEST CODE to be deleted
+
+
+; this string should be broken into words on spaces and punctuation,
+; converted to lower case and made into symbols
+; "take ten minutes and thirty-three seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"
+;  => (((time 633) (to cruise with wifey)) ((time 475) (to eat yummy food)))
+;
+;  First, I need to identify which tokens are time words
+;  either find the last time word, or look for a special token such as "to" or "and"
+(define test (string-split "Take TEN minutes AND THIRTY-THREE seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"))
+
+
