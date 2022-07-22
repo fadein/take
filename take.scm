@@ -11,7 +11,6 @@
 (import (chicken string))
 (import (chicken time))
 
-
 (import ansi-escape-sequences)
 (import miscmacros)
 (import srfi-1)
@@ -23,7 +22,7 @@
 (define *VERSION* "2.0")
 (define (usage)
   (print "take v" *VERSION*
-         "\n\nUsage: take 5 minutes 20 seconds to ... then take 30 seconds to ...")
+         "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ...")
   (exit 1))
 
 
@@ -116,8 +115,8 @@
              (helper (cddr lst) (+ accum (* no1 no2)) tot))
 
             (else
-              (printf "(helper no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)
-              (error "how did this happen?"))))))))
+              (printf "(helper no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
+              (error "Now sure how this could happen"))))))))
 
 (define (timespec->seconds timespec)
   ; condition input for the timespec->seconds function
@@ -180,8 +179,21 @@
     (let ((seconds (timespec->seconds timespec)))
       (values seconds rest))))
 
+; this is pure vanity - strip any trailing comma
+(define (list-strip-trailing-comma! head)
+  (let loop ((lst head))
+    (cond
+      ((null? lst) head)
+      ((null? (cdr lst))
+       (set-car! lst (string-trim-right (car lst) (char-set #\: #\,)))
+       head)
+      (else
+        (loop (cdr lst))))))
+
 (define (process-action words)
-  (break recognize-action? words))
+  (let-values (((action rest) (break recognize-action? words)))
+    ; strip trailing comma from final word of the action list
+    (values (list-strip-trailing-comma! action) rest)))
 
 (define (process-args args)
   (if (null? args)
@@ -189,14 +201,6 @@
     (let-values (((seconds rest) (process-timespec args)))
       (let-values (((action rest) (process-action rest)))
         (cons (list (list 'time seconds) action) (process-args rest))))))
-
-
-; Parse the command-line arguments into a list of alists
-(define (parse-command-line args)
-  (let ((directives (process-args args)))
-    (if (null? directives)
-        (usage)
-          directives)))
 
 
 ;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
@@ -232,7 +236,7 @@
     (when (not (null? directives))
       (let* ((this (car directives))
              (seconds (cadr (assq 'time this)))
-             (to-do (string-join (cdr (assq 'to this)))))
+             (to-do (string-join (cdr (assoc "to" this)))))
         (print* (set-title to-do))
         ; choose a counting display function at random
         (set! *cancel-countdown* #f)
@@ -346,19 +350,14 @@
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
 
-
 ; -icanon disables the terminal's line-buffering
 (with-stty '(not icanon echo)
            (lambda ()
-
-             (let ((directives (parse-command-line (command-line-arguments))))
-               (print "directives:" directives)  ; DELETE ME
-               (print "(caadar directives) => " (caadar directives) " is a "
-                      (cond
-                        ((string? (caadar directives)) "string")
-                        ((symbol? (caadar directives)) "symbol")
-                        (else "...something else")))
-               (process directives))
+             ; Parse the command-line arguments into a list of alists
+             (let ((directives (process-args (command-line-arguments))))
+               (if (null? directives)
+                 (usage)
+                 (process directives)))
              (print* (show-cursor))))
 
 ; vim: set expandtab:
