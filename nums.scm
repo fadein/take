@@ -1,20 +1,14 @@
 (import (chicken base))
+(import (chicken format))
+(import (chicken irregex))
 (import (chicken string))
+(import (only srfi-1 assoc break))
 
 
 (define (string?->symbol str?)
   (cond
     ((string->number str?))
     ((string->symbol str?))))
-
-; this string should be broken into words on spaces and punctuation,
-; converted to lower case and made into symbols
-; "take ten minutes and thirty-three seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"
-;  => (((time 633) (to cruise with wifey)) ((time 475) (to eat yummy food)))
-;
-;  First, I need to identify which tokens are time words
-;  either find the last time word, or look for a special token such as "to" or "and"
-
 
 (define (condition-input str)
   (map string?->symbol (string-split (string-downcase str) " -,.")))
@@ -75,7 +69,7 @@
 (define (pow1000? x)
   (memq x '(1000 1000000 1000000000 1000000000000)))
 
-(define (parse-words->numbers lst)
+(define (parse-numbers lst)
   (let helper ((lst lst) (accum 0) (tot 0))
     (cond
       ((null? lst) ; case 1
@@ -112,6 +106,77 @@
               (error "how did this happen?"))))))))
 
 (define (p str)
-  (parse-words->numbers (symbols->numbers (condition-input str))))
+  (parse-numbers (symbols->numbers (condition-input str))))
+
+(define (words->numbers words)
+  (parse-numbers (symbols->numbers words)))
 
 
+; this string should be broken into words on spaces and punctuation,
+; converted to lower case and made into symbols
+; "take ten minutes and thirty-three seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"
+;  => (((time 633) (to cruise with wifey)) ((time 475) (to eat yummy food)))
+;
+;  First, I need to identify which tokens are time words
+;  either find the last time word, or look for a special token such as "to" or "and"
+(define test (string-split "take ten minutes and thirty-three seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"))
+
+
+; condition input for timespec->seconds
+(define (ci-ts str)
+  (string-split (string-downcase str) " -,."))
+
+(define (timespec->seconds timespec)
+  (let helper ((timespec timespec) (accum '()) (total-seconds 0))
+    ; (printf "timespec:~a accum:~a tot:~a~n" timespec accum total-seconds)  ; DELETE ME
+    (cond
+      ((null? timespec)
+       ; (print "ALL DONE")  ; DELETE ME
+       total-seconds)
+
+      ; if (car timespec) matches HH:MM:SS or MM:SS, convert it to seconds and
+      ;   immediately return its value, discarding the remaining timespec
+      ;   (other timespec info after an absolute and complete HH:MM:SS doesn't
+      ;   really make sense)
+      ((irregex-search "(\\d\\d):(\\d\\d)(:(\\d\\d))" (car timespec))
+       => (lambda (match)
+            (if (irregex-match-substring match 4)
+              ; have all three of HH:MM:SS
+              (+ (* 3600 (string->number (irregex-match-substring match 1)))
+                 (*   60 (string->number (irregex-match-substring match 2)))
+                         (string->number (irregex-match-substring match 4)))
+              ; else, timespec is MM:SS
+              (+ (* 60 (string->number (irregex-match-substring match 1)))
+                       (string->number (irregex-match-substring match 2))))))
+
+      ; if (car timespec) is one of "seconds" "minutes" "hours" "days", etc.,
+      ;   process (reverse accum) with symbols->numbers, then multiply by the time type,
+      ;   then add to total-seconds & loop
+      ((assoc (car timespec) '(("days" . 86400) ("day" . 86400) ("d" . 86400)
+                               ("hours" . 3600) ("hour" . 3600) ("hr" . 3600) ("hrs" . 3600) ("h" . 3600)
+                               ("minutes" . 60) ("minute" . 60) ("min" . 60) ("mins" . 60) ("m" . 60)
+                               ("seconds" . 1) ("second" . 1) ("sec" . 1) ("secs" . 1) ("s" . 1))
+              string-ci=) =>
+       (lambda (multiplier)
+         ; (print "  multiplier:" multiplier " accum:" accum)  ; DELETE ME
+         (let* ((number (words->numbers (map string?->symbol (reverse accum))))
+                (seconds (* number (cdr multiplier))))
+           ; (printf "number:~a seconds:~a multiplier:~a~n" number seconds (cdr multiplier))  ; DELETE ME
+           (helper (cdr timespec) '() (+ total-seconds seconds)))))
+
+      ; else, append (car timespec) to accum & loop
+      (else
+        (helper (cdr timespec) (cons (car timespec) accum) total-seconds)))))
+
+; predicate for use with (srfi-1 break)
+;   break a list into a timespec & everything following
+;   a timespec ends at the words "to"
+(define (recognize-timespec? item)
+  (string-ci=? item "to"))
+
+; predicate for use with (srfi-1 break)
+;   break a list into an action & everything following
+;   an action ends at the words "take" or "then"
+(define (recognize-action? item)
+  (or (string-ci=? item "take")
+      (string-ci=? item "then")))
