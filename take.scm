@@ -19,7 +19,7 @@
 (import stty)
 
 
-(define *VERSION* "2.0")
+(define *VERSION* "2.1")
 (define (usage)
   (print "take v" *VERSION*
          "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ...")
@@ -29,7 +29,11 @@
 (define (symbols->numbers xs)
   (define name->value '((zero 0)
                         (one 1)
+                        (a 1)
+                        (an 1)
                         (two 2)
+                        (couple 2)
+                        (pair 2)
                         (three 3)
                         (four 4)
                         (five 5)
@@ -200,8 +204,9 @@
     '()
     (let-values (((seconds rest) (process-timespec args)))
       (let-values (((action rest) (process-action rest)))
-        (cons (list (list 'time seconds) action) (process-args rest))))))
-
+        (if (zero? seconds)
+          (process-args rest)
+          (cons (list (list 'time seconds) action) (process-args rest)))))))
 
 ;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
 ;; blinking colons
@@ -288,8 +293,9 @@
         (let* (; re-calculate the screen width on each update
                (secs-per-col (/ *cols* seconds))
                ; form the message, padded with spaces, putting the reverse attr in the right place
-               (msg (string-pad-right to-do (- *cols* 6)))
-               (line (string-concatenate (list (seconds->timestamp time-left) " " msg)))
+               (timestamp (seconds->timestamp time-left))
+               (msg (string-pad-right to-do (- *cols* (add1 (string-length timestamp)))))
+               (line (string-concatenate (list timestamp " " msg)))
                (bar-width (truncate (* time-left secs-per-col)))
                (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
                (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
