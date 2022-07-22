@@ -5,14 +5,6 @@
 (import (only srfi-1 assoc break))
 
 
-(define (string?->symbol str?)
-  (cond
-    ((string->number str?))
-    ((string->symbol str?))))
-
-(define (condition-input str)
-  (map string?->symbol (string-split (string-downcase str) " -,.")))
-
 (define (symbols->numbers xs)
   (define name->value '((zero 0)
                         (one 1)
@@ -53,72 +45,66 @@
       ((null? xs)
        '())
 
-      ((number? (car xs))
-       (cons (car xs) (helper (cdr xs))))
+      ((string->number (car xs))
+       => (lambda (num)
+            (cons num (helper (cdr xs)))))
 
-      ((assq (car xs) name->value) => (lambda (p)
-                                        (cons (cdr p) (helper (cdr xs)))))
+      ((assq (string->symbol (car xs)) name->value)
+       => (lambda (p)
+            (cons (cdr p) (helper (cdr xs)))))
 
-      (else (helper (cdr xs)))))
+      (else
+        (helper (cdr xs)))))
+
   (flatten (helper xs)))
 
 
-(define (pow10? x)
-  (memq x '(10 100 1000 10000 1000000 10000000 100000000 1000000000 10000000000 100000000000 1000000000000)))
+(define (words->numbers words)
+  ; TODO - there's got to be a better way to do this
+  (define (pow10? x)
+    (memq x '(10 100 1000 10000 1000000 10000000 100000000 1000000000 10000000000 100000000000 1000000000000)))
 
-(define (pow1000? x)
-  (memq x '(1000 1000000 1000000000 1000000000000)))
+  ; TODO - there's got to be a better way to do this
+  (define (pow1000? x)
+    (memq x '(1000 1000000 1000000000 1000000000000)))
 
-(define (parse-numbers lst)
-  (let helper ((lst lst) (accum 0) (tot 0))
+  (let helper ((lst (symbols->numbers words)) (accum 0) (tot 0))
     (cond
       ((null? lst) ; case 1
-       ; (print "case 1")  ; DELETE ME
        (+ tot accum))
       ((= 1 (length lst))
        (let ((no1 (car lst)))
          (if (pow1000? no1)
            (begin
-             ; (printf "case 2 no1:~a lst:~a accum:~a tot:~a~n" no1 lst accum tot)  ; DELETE ME
              (+ tot (* accum no1)))  ; case 2
            (begin
-             ; (printf "case 3 no1:~a lst:~a accum:~a tot:~a~n" no1 lst accum tot)  ; DELETE ME
              (+ tot accum no1))))) ; case 3 - not sure why I considered these two cases separately on paper...
       (else
         (let ((no1 (car lst))
               (no2 (cadr lst)))
           (cond
             ((pow1000? no1)  ; case 4
-             ; (printf "case 4 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
              (helper (cdr lst) 0 (+ tot (* no1 accum))))
 
             ((and (<= 1 no1 9) (pow1000? no2))  ; case 6 
-             ; (printf "case 6 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
              (helper (cddr lst) 0 
                      (+ tot (* (+ accum no1) no2))))
 
             ((and (<= 1 no1 9) (pow10? no2))  ; case 5
-             ; (printf "case 5 no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
              (helper (cddr lst) (+ accum (* no1 no2)) tot))
 
             (else
               (printf "(helper no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)
               (error "how did this happen?"))))))))
 
-(define (words->numbers words)
-  (parse-numbers (symbols->numbers words)))
-
-
-; condition input for timespec->seconds
-(define (ci-ts str)
-  (flatten (map (lambda (s) (string-split (string-downcase s) " -,.")) str)))
-
 (define (timespec->seconds timespec)
+  ; condition input for the timespec->seconds function
+  (define (ci-ts str)
+    (flatten (map (lambda (s) (string-split (string-downcase s) " -,.")) str)))
+
   (let helper ((timespec (ci-ts timespec)) (accum '()) (total-seconds 0))
-    ; (printf "timespec:~a accum:~a tot:~a~n" timespec accum total-seconds)  ; DELETE ME
     (cond
       ((null? timespec)
-       ; (print "ALL DONE")  ; DELETE ME
        total-seconds)
 
       ; if (car timespec) matches HH:MM:SS or MM:SS, convert it to seconds and
@@ -145,10 +131,8 @@
                                ("seconds" . 1) ("second" . 1) ("sec" . 1) ("secs" . 1) ("s" . 1))
               string-ci=) =>
        (lambda (multiplier)
-         ; (print "  multiplier:" multiplier " accum:" accum)  ; DELETE ME
-         (let* ((number (words->numbers (map string?->symbol (reverse accum))))
+         (let* ((number (words->numbers (reverse accum)))
                 (seconds (* number (cdr multiplier))))
-           ; (printf "number:~a seconds:~a multiplier:~a~n" number seconds (cdr multiplier))  ; DELETE ME
            (helper (cdr timespec) '() (+ total-seconds seconds)))))
 
       ; else, append (car timespec) to accum & loop
@@ -197,6 +181,8 @@
 ;
 ;  First, I need to identify which tokens are time words
 ;  either find the last time word, or look for a special token such as "to" or "and"
-(define test (string-split "Take TEN minutes AND THIRTY-THREE seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"))
+(define test0 (string-split "Take TEN minutes AND THIRTY-THREE seconds to cruise with wifey then take seven minutes fifty-five seconds to eat yummy food"))
 
+(define test1 (string-split "Take TEN minutes, THIRTY-THREE seconds to cruise with wifey then take seven min, 55 secs to eat yummy food"))
 
+(define test2 (string-split "TEN m, THIRTY THREE seconds to cruise with wifey then take seven min, 55 secs to eat yummy food"))
