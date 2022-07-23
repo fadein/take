@@ -2,7 +2,6 @@
 
 
 (import (chicken base))
-(import (chicken format))  ; DELETE ME
 (import (chicken io))
 (import (chicken irregex))
 (import (chicken port))
@@ -22,7 +21,7 @@
 (import words-to-numbers)
 
 
-(define *VERSION* "2.3")
+(define *VERSION* "2.4")
 (define (usage)
   (print "take v" *VERSION*
          "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ...")
@@ -104,8 +103,11 @@
 
 (define (process-action words)
   (let-values (((action rest) (break recognize-action? words)))
-    ; strip trailing comma from final word of the action list
-    (values (list-strip-trailing-comma! action) rest)))
+    (values
+      (if (null? action)
+        '("to" "???")
+        (list-strip-trailing-comma! action)) ; strip trailing comma from final word of the action list
+      rest)))
 
 (define (process-args args)
   (if (null? args)

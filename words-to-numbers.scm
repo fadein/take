@@ -82,7 +82,7 @@
       ((= 1 (length lst))
        (let ((no1 (car lst)))
          (if (pow1000? no1)
-           (+ tot (* accum no1))
+           (+ tot (* (if (zero? accum) 1 accum) no1))
            (+ tot accum no1))))
       (else
         (let ((no1 (car lst))
