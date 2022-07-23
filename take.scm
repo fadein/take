@@ -22,7 +22,7 @@
 (import words-to-numbers)
 
 
-(define *VERSION* "2.2")
+(define *VERSION* "2.3")
 (define (usage)
   (print "take v" *VERSION*
          "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ...")

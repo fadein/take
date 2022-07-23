@@ -10,8 +10,8 @@ BINDIR  ?= /usr/local/bin
 PROG    = take
 
 
-$(PROG): $(PROG).scm
-	$(CSC) $(CSC_OPTIONS) $^
+$(PROG): $(PROG).scm words-to-numbers.scm
+	$(CSC) $(CSC_OPTIONS) $<
 
 test: $(PROG)
 	./take 2 seconds to say hi then take 5 seconds to smile then take 10 seconds to really think about it

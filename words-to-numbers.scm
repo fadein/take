@@ -2,7 +2,6 @@
         (words->numbers symbols->numbers)
 
 (import srfi-1)
-(import (chicken format))  ; DELETE ME
 (import (chicken base))
 (import scheme)
 
@@ -78,30 +77,29 @@
 (define (words->numbers words)
   (let helper ((lst (symbols->numbers words)) (accum 0) (tot 0))
     (cond
-      ((null? lst)  ; case 1
+      ((null? lst)
        (+ tot accum))
       ((= 1 (length lst))
        (let ((no1 (car lst)))
          (if (pow1000? no1)
-           (begin
-             (+ tot (* accum no1)))  ; case 2
-           (begin
-             (+ tot accum no1))))) ; case 3 - not sure why I considered these two cases separately on paper...
+           (+ tot (* accum no1))
+           (+ tot accum no1))))
       (else
         (let ((no1 (car lst))
               (no2 (cadr lst)))
           (cond
-            ((pow1000? no1)  ; case 4
+            ((pow1000? no1)
              (helper (cdr lst) 0 (+ tot (* no1 accum))))
 
-            ((and (<= 1 no1 9) (pow1000? no2))  ; case 6 
+            ((and (<= 1 no1 10) (pow1000? no2))
              (helper (cddr lst) 0 
                      (+ tot (* (+ accum no1) no2))))
 
-            ((and (<= 1 no1 9) (pow10? no2))  ; case 5
+            ((and (<= 1 no1 10) (pow10? no2))
              (helper (cddr lst) (+ accum (* no1 no2)) tot))
 
             (else
+              (import (chicken format))  ; DELETE ME
               (printf "(helper no1:~a no2:~a lst:~a accum:~a tot:~a~n" no1 no2 lst accum tot)  ; DELETE ME
               (error "Now sure how this could happen"))))))))
 
