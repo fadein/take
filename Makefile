@@ -24,7 +24,7 @@ uninstall:
 	-$(SUDO) $(RM) $(BINDIR)/$(PROG)
 
 clean:
-	-rm -f *.o *.c *.link *core $(PROG)
+	-rm -f *.o *.c *.link *core *.so *.import.scm $(PROG)
 
 setup:
 	chicken-install -sudo -from-list eggs.list
