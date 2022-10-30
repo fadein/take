@@ -21,7 +21,7 @@
 (import words-to-numbers)
 
 
-(define *VERSION* "2.4")
+(define *VERSION* "2.4.1")
 (define (usage)
   (print "take v" *VERSION*
          "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ...")
@@ -43,7 +43,7 @@
       ;   immediately return its value, discarding the remaining timespec
       ;   (other timespec info after an absolute and complete HH:MM:SS doesn't
       ;   really make sense)
-      ((irregex-search "(\\d\\d):(\\d\\d)(:(\\d\\d))" (car timespec))
+      ((irregex-search "(\\d\\d):(\\d\\d)(:(\\d\\d))?" (car timespec))
        => (lambda (match)
             (if (irregex-match-substring match 4)
               ; have all three of HH:MM:SS

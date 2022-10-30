@@ -92,7 +92,7 @@
              (helper (cdr lst) 0 (+ tot (* no1 accum))))
 
             ((and (<= 1 no1 10) (pow1000? no2))
-             (helper (cddr lst) 0 
+             (helper (cddr lst) 0
                      (+ tot (* (+ accum no1) no2))))
 
             ((and (<= 1 no1 10) (pow10? no2))
