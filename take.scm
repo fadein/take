@@ -1,5 +1,6 @@
 #!/usr/bin/csi -s
 
+(define *VERSION* "2.5")
 
 (import (chicken base))
 (import (chicken io))
@@ -21,12 +22,10 @@
 (import words-to-numbers)
 
 
-(define *VERSION* "2.4.1")
 (define (usage)
   (print "take v" *VERSION*
          "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ...")
   (exit 1))
-
 
 
 (define (timespec->seconds timespec)

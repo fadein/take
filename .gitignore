@@ -3,3 +3,5 @@ take
 *.c
 *.o
 *core
+*.build.sh
+*.install.sh

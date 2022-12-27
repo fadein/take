@@ -1,0 +1,12 @@
+;;; take.egg -*- Scheme -*- vim: ft=scheme:
+
+((synopsis "Simple terminal countdown timer")
+ (version "2.5")
+ (category tools)
+ (license "Private Use")
+ (author "Erik Falor")
+ (dependencies ansi-escape-sequences miscmacros srfi-1 srfi-13 srfi-14 stty)
+ (components
+   (program take
+            (source-dependencies "take.scm" "words-to-numbers.scm")
+            (csc-options "-d1" "-O3" "-static"))))
