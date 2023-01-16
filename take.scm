@@ -1,6 +1,6 @@
 #!/usr/bin/csi -s
 
-(define *VERSION* "2.5")
+(define *VERSION* "2.5.1")
 
 (import (chicken base))
 (import (chicken io))
@@ -42,7 +42,7 @@
       ;   immediately return its value, discarding the remaining timespec
       ;   (other timespec info after an absolute and complete HH:MM:SS doesn't
       ;   really make sense)
-      ((irregex-search "(\\d\\d):(\\d\\d)(:(\\d\\d))?" (car timespec))
+      ((irregex-search "(\\d?\\d):(\\d\\d)(:(\\d\\d))?" (car timespec))
        => (lambda (match)
             (if (irregex-match-substring match 4)
               ; have all three of HH:MM:SS
