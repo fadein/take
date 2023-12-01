@@ -1,6 +1,6 @@
 #!/usr/bin/csi -s
 
-(define *VERSION* "2.5.1")
+(define *VERSION* "2.6")
 
 (import (chicken base))
 (import (chicken io))
@@ -140,32 +140,39 @@
             (cons (zero-pad (car l)) (cons (if (even? sec) ":" ".") (build (cdr l))))))))))
 
 
+;; pick an element from lst at random
+(define (random-choice lst)
+  (list-ref lst (pseudo-random-integer (length lst))))
+
+
 ;; Given a list of directives alists, print the message and countdown for the given time
 (define (process directives)
   (define counters
     (map (lambda (color) (lambda (seconds to-do) (countdown seconds to-do color)))
          '(fg-red fg-green fg-yellow fg-blue fg-magenta fg-cyan fg-white)))
 
-  (define (process-h directives)
+  (define (process* directives)
     (when (not (null? directives))
       (let* ((this (car directives))
              (seconds (cadr (assq 'time this)))
              (to-do (string-join (cdr (assoc "to" this)))))
         (print* (set-title to-do))
-        ; choose a counting display function at random
         (set! *cancel-countdown* #f)
-        ((list-ref counters (pseudo-random-integer (length counters))) seconds to-do)
+
+        ; run a countdown display function chosen at random
+        ((random-choice counters) seconds to-do)
 
         ; ring the bell thrice if this countdown wasn't cancelled
         (unless *cancel-countdown*
           (do ((i 3 (sub1 i)))
-            ((zero? i) (newline))
+            ((zero? i))  ; quit when i=0
             (print* "\a") (sleep 1)))
+        (newline)
 
-      (process-h (cdr directives)))))
+      (process* (cdr directives)))))
 
   (print* (hide-cursor))
-  (process-h directives)
+  (process* directives)
   (cleanup! 'normal-exit))
 
 
