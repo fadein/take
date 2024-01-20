@@ -1,6 +1,6 @@
 #!/usr/bin/csi -s
 
-(define *VERSION* "2.6")
+(define *VERSION* "2.6.1")
 
 (import (chicken base))
 (import (chicken io))

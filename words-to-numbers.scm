@@ -3,47 +3,76 @@
 
 (import srfi-1)
 (import (chicken base))
+(import (chicken io))
+(import (chicken random))
 (import scheme)
 
 
+;; manually randomize the PRNG from /dev/urandom otherwise the current $SECONDS
+;; are used, resulting the stable outputs when the program is run quickly
+;; back-to-back
+(define (seed-prng-from-urandom!)
+  (set-pseudo-random-seed!
+    (with-input-from-file "/dev/urandom" (lambda () (read-string 8)))))
+
+;; Return a number in the range [i, j)
+(define (a-number-between i j)
+  (let ((spread (add1 (abs (- j i)))))
+    (+ (min i j) (pseudo-random-integer spread))))
+
+
 (define (symbols->numbers xs)
-  (let ((name->value '((zero 0)
-                       (one 1)
-                       (a 1)
-                       (an 1)
-                       (two 2)
-                       (couple 2)
-                       (pair 2)
-                       (three 3)
-                       (four 4)
-                       (five 5)
-                       (six 6)
-                       (seven 7)
-                       (eight 8)
-                       (nine 9)
-                       (ten 10)
-                       (eleven 1 10 1)
-                       (twelve 1 10 2)
-                       (thirteen 1 10 3)
-                       (fourteen 1 10 4)
-                       (fifteen 1 10 5)
-                       (sixteen 1 10 6)
-                       (seventeen 1 10 7)
-                       (eightteen 1 10 8)
-                       (nineteen 1 10 9)
-                       (twenty 2 10)
-                       (thirty 3 10)
-                       (forty 4 10)
-                       (fifty 5 10)
-                       (sixty 6 10)
-                       (seventy 7 10)
-                       (eighty 8 10)
-                       (ninety 9 10)
-                       (hundred 100)
-                       (thousand 1000)
-                       (million 1000000)
-                       (billion 1000000000)
-                       (trillion 1000000000000))))
+  (let ((precise-name->value
+          '((zero 0)
+            (one 1)
+            (a 1)
+            (an 1)
+            (two 2)
+            (couple 2)
+            (pair 2)
+            (three 3)
+            (few 3)
+            (four 4)
+            (five 5)
+            (six 6)
+            (seven 7)
+            (eight 8)
+            (nine 9)
+            (ten 10)
+            (eleven 1 10 1)
+            (twelve 1 10 2)
+            (thirteen 1 10 3)
+            (fourteen 1 10 4)
+            (fifteen 1 10 5)
+            (sixteen 1 10 6)
+            (seventeen 1 10 7)
+            (eightteen 1 10 8)
+            (nineteen 1 10 9)
+            (twenty 2 10)
+            (thirty 3 10)
+            (forty 4 10)
+            (fifty 5 10)
+            (sixty 6 10)
+            (seventy 7 10)
+            (eighty 8 10)
+            (ninety 9 10)
+            (hundred 100)
+            (gross 144)
+            (thousand 1000)
+            (million 1000000)
+            (billion 1000000000)
+            (trillion 1000000000000)))
+
+        (fuzzy-name->value 
+          `((few . ,(lambda () (a-number-between 3 5)))
+            (several . ,(lambda () (a-number-between 4 7)))
+            (some . ,(lambda () (a-number-between 4 7)))
+            (pack . ,(lambda () (a-number-between 5 21)))
+            (bunch . ,(lambda () (a-number-between 8 15)))
+            (many . ,(lambda () (a-number-between 8 15)))
+            (lots . ,(lambda () (a-number-between 8 15)))
+            (mess . ,(lambda () (a-number-between 20 55)))
+            (grundle . ,(lambda () (a-number-between 20 55))))))
 
     (define (helper xs)
       (cond
@@ -54,9 +83,13 @@
          => (lambda (num)
               (cons num (helper (cdr xs)))))
 
-        ((assq (string->symbol (car xs)) name->value)
+        ((assq (string->symbol (car xs)) precise-name->value)
          => (lambda (p)
               (cons (cdr p) (helper (cdr xs)))))
+
+        ((assq (string->symbol (car xs)) fuzzy-name->value)
+         => (lambda (p)
+              (cons ((cdr p)) (helper (cdr xs)))))
 
         (else
           (helper (cdr xs)))))
@@ -97,6 +130,9 @@
 
             ((and (<= 1 no1 10) (pow10? no2))
              (helper (cddr lst) (+ accum (* no1 no2)) tot))
+
+            ((= 1 no1)
+             (helper (cddr lst) (+ accum no2) tot))
 
             (else
               (import (chicken format))  ; DELETE ME
