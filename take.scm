@@ -1,6 +1,6 @@
 #!/usr/bin/csi -s
 
-(define *VERSION* "2.6.1")
+(define *VERSION* "2.7.0")
 
 (import (chicken base))
 (import (chicken io))
@@ -72,9 +72,10 @@
 
 ; predicate for use with (srfi-1 break)
 ;   break a list into a timespec & everything following
-;   a timespec ends at the words "to"
+;   a timespec ends at the words "to" or "for"
 (define (recognize-timespec? item)
-  (string-ci=? item "to"))
+  (or (string-ci=? item "to")
+      (string-ci=? item "for")))
 
 ; predicate for use with (srfi-1 break)
 ;   break a list into an action & everything following
@@ -155,7 +156,8 @@
     (when (not (null? directives))
       (let* ((this (car directives))
              (seconds (cadr (assq 'time this)))
-             (to-do (string-join (cdr (assoc "to" this)))))
+             (to-do (string-join (cdr (or (assoc "to" this)
+                                          (assoc "for" this))))))
         (print* (set-title to-do))
         (set! *cancel-countdown* #f)
 

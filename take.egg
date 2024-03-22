@@ -1,7 +1,7 @@
 ;;; take.egg -*- Scheme -*- vim: ft=scheme:
 
 ((synopsis "Simple terminal countdown timer")
- (version "2.5")
+ (version "2.7.0")
  (category tools)
  (license "Private Use")
  (author "Erik Falor")
