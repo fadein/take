@@ -16,3 +16,5 @@
     *   Timespecs like HH:MM:SS are ignored
 *   v2.5
     *   Package as an egg
+*   v2.8
+    *   Timer can be paused

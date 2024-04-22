@@ -1,6 +1,6 @@
 #!/usr/bin/csi -s
 
-(define *VERSION* "2.7.0")
+(define *VERSION* "2.8.0")
 
 (import (chicken base))
 (import (chicken io))
@@ -18,9 +18,12 @@
 (import srfi-13)
 (import srfi-14)
 (import stty)
+
 (include "words-to-numbers.scm")
 (import words-to-numbers)
 
+
+(define *SLEEPY-TIME* 1)
 
 (define (usage)
   (print "take v" *VERSION*
@@ -168,7 +171,7 @@
         (unless *cancel-countdown*
           (do ((i 3 (sub1 i)))
             ((zero? i))  ; quit when i=0
-            (print* "\a") (sleep 1)))
+            (print* "\a") (sleep *SLEEPY-TIME*)))
         (newline)
 
       (process* (cdr directives)))))
@@ -180,6 +183,7 @@
 
 (define (countdown seconds to-do #!optional (color 'fg-white))
   (define restart #f)
+  (define paused? #f)
 
     ;; The lambda invoked by call/cc sets time-left to the initial value of 'seconds'
     ;; and assigns this continuation to the name 'restart'
@@ -205,6 +209,9 @@
                   (set! time-left
                     (max 0 (- time-left (inexact->exact (round (* seconds 0.05)))))))
 
+                 ((#\p #\P #\space)
+                  (set! paused? (not paused?)))
+
                  ((#\q #\Q)
                   (cleanup! 'quit))))
 
@@ -212,18 +219,20 @@
                (secs-per-col (/ *cols* seconds))
                ; form the message, padded with spaces, putting the reverse attr in the right place
                (timestamp (seconds->timestamp time-left))
-               (msg (string-pad-right to-do (- *cols* (add1 (string-length timestamp)))))
-               (line (string-concatenate (list timestamp " " msg)))
+               (msg (string-pad-right
+                      (if paused? (conc "[PAUSED] " to-do) to-do)
+                      (- *cols* (add1 (string-length timestamp)))))
+               (line (string-append timestamp " " msg))
                (bar-width (truncate (* time-left secs-per-col)))
                (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
                (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
           (print* "\r" (erase-line) reversed regular))
-        (sleep 1)
+        (sleep *SLEEPY-TIME*)
         (if *winched*
           (begin
             (set! *winched* #f)
             (loop time-left))
-          (loop (sub1 time-left))))))
+          (loop (if paused? time-left (sub1 time-left)))))))
 
 
 
