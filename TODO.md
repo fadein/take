@@ -2,6 +2,10 @@
 
 -   When a directive is dropped due to an unparseable timespec, an error message should be printed
 
+# Features
+
+-   `take until 3pm to ...`
+
 # Fixed
 
 *   v2.1 When a timespec wasn't recognized, a directive with `(time 0)` was created.
