@@ -1,6 +1,6 @@
-#!/usr/bin/csi -s
+#!/bin/env -S csi -s
 
-(define *VERSION* "2.8.0")
+(define *VERSION* "2.8.1")
 
 (import (chicken base))
 (import (chicken io))
@@ -34,7 +34,7 @@
 (define (timespec->seconds timespec)
   ; condition input for the timespec->seconds function
   (define (ci-ts str)
-    (flatten (map (lambda (s) (string-split (string-downcase s) " -,.")) str)))
+    (flatten (map (lambda (s) (string-split (string-downcase s) " -,")) str)))
 
   (let helper ((timespec (ci-ts timespec)) (accum '()) (total-seconds 0))
     (cond
@@ -66,7 +66,7 @@
               string-ci=) =>
        (lambda (multiplier)
          (let* ((number (words->numbers (reverse accum)))
-                (seconds (* number (cdr multiplier))))
+                (seconds (inexact->exact (round (* number (cdr multiplier))))))
            (helper (cdr timespec) '() (+ total-seconds seconds)))))
 
       ; else, append (car timespec) to accum & loop
