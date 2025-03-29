@@ -1,6 +1,6 @@
 #!/bin/env -S csi -s
 
-(define *VERSION* "2.8.1")
+(define *VERSION* "2.8.2")
 
 (import (chicken base))
 (import (chicken io))
@@ -108,7 +108,7 @@
   (let-values (((action rest) (break recognize-action? words)))
     (values
       (if (null? action)
-        '("to" "???")
+        '("to" "")
         (list-strip-trailing-comma! action)) ; strip trailing comma from final word of the action list
       rest)))
 
