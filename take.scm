@@ -32,8 +32,17 @@
 
 
 (define (timespec->seconds timespec)
-  ; condition input for the timespec->seconds function
+  ;; Convert a human time specification into seconds.
+  ;; Input numbers can be any mixture of integers, floats, or words.
+  ;; Unrecognized words are silently ignored, allowing for the use of filler words like "and"
+  ;; Examples include:
+  ;;   2.5 days
+  ;;   3.14159 hours
+  ;;   four minutes thirty seconds
+  ;;   3 days 12.5 hours and fifteen seconds
+
   (define (ci-ts str)
+    ;; condition input for the timespec->seconds function
     (flatten (map (lambda (s) (string-split (string-downcase s) " -,")) str)))
 
   (let helper ((timespec (ci-ts timespec)) (accum '()) (total-seconds 0))
