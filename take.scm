@@ -40,12 +40,16 @@
   ;;   3.14159 hours
   ;;   four minutes thirty seconds
   ;;   3 days 12.5 hours and fifteen seconds
+  ;;
+  ;; EXPERIMENTAL Proportional timespecs are passed through.
+  ;;   These are of the form n% where n is a number.
 
   (define (ci-ts str)
     ;; condition input for the timespec->seconds function
     (flatten (map (lambda (s) (string-split (string-downcase s) " -,")) str)))
 
   (let helper ((timespec (ci-ts timespec)) (accum '()) (total-seconds 0))
+    (print "        timespec=" timespec)  ; DELETE ME
     (cond
       ((null? timespec)
        total-seconds)
@@ -72,11 +76,11 @@
                                ("hours" . 3600) ("hour" . 3600) ("hr" . 3600) ("hrs" . 3600) ("h" . 3600)
                                ("minutes" . 60) ("minute" . 60) ("min" . 60) ("mins" . 60) ("m" . 60)
                                ("seconds" . 1) ("second" . 1) ("sec" . 1) ("secs" . 1) ("s" . 1))
-              string-ci=) =>
-       (lambda (multiplier)
-         (let* ((number (words->numbers (reverse accum)))
-                (seconds (inexact->exact (round (* number (cdr multiplier))))))
-           (helper (cdr timespec) '() (+ total-seconds seconds)))))
+              string-ci=)
+       => (lambda (multiplier)
+            (let* ((number (words->numbers (reverse accum)))
+                   (seconds (inexact->exact (round (* number (cdr multiplier))))))
+              (helper (cdr timespec) '() (+ total-seconds seconds)))))
 
       ; else, append (car timespec) to accum & loop
       (else
@@ -121,14 +125,25 @@
         (list-strip-trailing-comma! action)) ; strip trailing comma from final word of the action list
       rest)))
 
-(define (process-args args)
-  (if (null? args)
-    '()
-    (let-values (((seconds rest) (process-timespec args)))
-      (let-values (((action rest) (process-action rest)))
-        (if (zero? seconds)
-          (process-args rest)
-          (cons (list (list 'time seconds) action) (process-args rest)))))))
+(define process-args
+  (let ((i 0))
+
+    (lambda (args)
+      (set! i (add1 i))
+      (print i " process-args: " args)  ; DELETE ME
+      (if (null? args)
+        '()
+        (let-values (((seconds rest) (process-timespec args)))
+          (print i "  seconds: " seconds)  ; DELETE ME
+          (print i "     rest: " rest)  ; DELETE ME
+          (let-values (((action rest) (process-action rest)))
+            (print i "   action: " action)  ; DELETE ME
+            (print i "     rest: " rest)  ; DELETE ME
+            (if (zero? seconds)
+              (process-args rest)
+              (cons (list (list 'time seconds) action) (process-args rest)))))))
+    )
+  )
 
 ;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
 ;; blinking colons
@@ -297,6 +312,7 @@
            (lambda ()
              ; Parse the command-line arguments into a list of alists
              (let ((directives (process-args (command-line-arguments))))
+               (print "directives: " directives)  ; DELETE ME
                (if (null? directives)
                  (usage)
                  (process directives)))
