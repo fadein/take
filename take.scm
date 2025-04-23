@@ -19,11 +19,8 @@
 (import srfi-14)
 (import stty)
 
-(include "words-to-numbers.scm")
-(import words-to-numbers)
+(include "words-to-numbers.scm") (import words-to-numbers)
 
-
-(define *SLEEPY-TIME* 1)
 
 (define (usage)
   (print "take v" *VERSION*
@@ -45,7 +42,7 @@
   ;;   These are of the form n% where n is a number.
 
   (define (ci-ts str)
-    ;; condition input for the timespec->seconds function
+    ;; massage input for the enclosing function
     (flatten (map (lambda (s) (string-split (string-downcase s) " -,")) str)))
 
   (let helper ((timespec (ci-ts timespec)) (accum '()) (total-seconds 0))
@@ -106,6 +103,7 @@
     (let ((seconds (timespec->seconds timespec)))
       (values seconds rest))))
 
+
 ; this is pure vanity - strip any trailing comma
 (define (list-strip-trailing-comma! head)
   (let loop ((lst head))
@@ -117,33 +115,36 @@
       (else
         (loop (cdr lst))))))
 
+
 (define (process-action words)
   (let-values (((action rest) (break recognize-action? words)))
     (values
       (if (null? action)
         '("to" "")
-        (list-strip-trailing-comma! action)) ; strip trailing comma from final word of the action list
+        (list-strip-trailing-comma! action))
       rest)))
 
-(define process-args
+
+(define argv->directives
   (let ((i 0))
 
-    (lambda (args)
+    (lambda (argv)
       (set! i (add1 i))
-      (print i " process-args: " args)  ; DELETE ME
-      (if (null? args)
+      (print i " argv->directives " argv)  ; DELETE ME
+      (if (null? argv)
         '()
-        (let-values (((seconds rest) (process-timespec args)))
+        (let-values (((seconds rest) (process-timespec argv)))
           (print i "  seconds: " seconds)  ; DELETE ME
           (print i "     rest: " rest)  ; DELETE ME
           (let-values (((action rest) (process-action rest)))
             (print i "   action: " action)  ; DELETE ME
             (print i "     rest: " rest)  ; DELETE ME
             (if (zero? seconds)
-              (process-args rest)
-              (cons (list (list 'time seconds) action) (process-args rest)))))))
+              (argv->directives rest)
+              (cons (list (list 'time seconds) action) (argv->directives rest)))))))
     )
   )
+
 
 ;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
 ;; blinking colons
@@ -195,7 +196,7 @@
         (unless *cancel-countdown*
           (do ((i 3 (sub1 i)))
             ((zero? i))  ; quit when i=0
-            (print* "\a") (sleep *SLEEPY-TIME*)))
+            (print* "\a") (sleep 1)))
         (newline)
 
       (process* (cdr directives)))))
@@ -251,7 +252,7 @@
                (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
                (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
           (print* "\r" (erase-line) reversed regular))
-        (sleep *SLEEPY-TIME*)
+        (sleep 1)
         (if *winched*
           (begin
             (set! *winched* #f)
@@ -307,12 +308,12 @@
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
 
-(define (main args)
+(define (main argv)
   ; -icanon disables the terminal's line-buffering
   (with-stty '(not icanon echo)
              (lambda ()
                ; Parse the command-line arguments into a list of alists
-               (let ((directives (process-args args)))
+               (let ((directives (argv->directives argv)))
                  (print "directives: " directives)  ; DELETE ME
                  (if (null? directives)
                    (usage)
