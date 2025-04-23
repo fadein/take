@@ -225,11 +225,12 @@
                   (set! *cancel-countdown* #t)
                   (set! time-left 0))
 
-                 ; add or subtract 5% of the timer
+                 ; add 5% to the timer (+ 1 second to make up for this keypress)
                  ((#\+ #\=)
                   (set! time-left
-                    (min seconds (+ time-left (inexact->exact (round (* seconds 0.05)))))))
+                    (min seconds (+ 1 time-left (inexact->exact (round (* seconds 0.05)))))))
 
+                 ; subtract 5% from the timer
                  ((#\- #\_)
                   (set! time-left
                     (max 0 (- time-left (inexact->exact (round (* seconds 0.05)))))))
