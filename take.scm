@@ -141,7 +141,7 @@
             (print i "     rest: " rest)  ; DELETE ME
             (if (zero? seconds)
               (argv->directives rest)
-              (cons (list (list 'time seconds) action) (argv->directives rest)))))))
+              (cons `((time ,seconds) ,action) (argv->directives rest)))))))
     )
   )
 
