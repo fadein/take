@@ -1,6 +1,6 @@
-#!/bin/env -S csi -s
+#!/bin/env -S csi -ss
 
-(define *VERSION* "2.8.2")
+(define *VERSION* "3.0.a")
 
 (import (chicken base))
 (import (chicken io))
@@ -307,15 +307,20 @@
 (set-signal-handler! signal/winch window-size-changed!)
 (window-size-changed! #f)
 
-; -icanon disables the terminal's line-buffering
-(with-stty '(not icanon echo)
-           (lambda ()
-             ; Parse the command-line arguments into a list of alists
-             (let ((directives (process-args (command-line-arguments))))
-               (print "directives: " directives)  ; DELETE ME
-               (if (null? directives)
-                 (usage)
-                 (process directives)))
-             (print* (show-cursor))))
+(define (main args)
+  ; -icanon disables the terminal's line-buffering
+  (with-stty '(not icanon echo)
+             (lambda ()
+               ; Parse the command-line arguments into a list of alists
+               (let ((directives (process-args args)))
+                 (print "directives: " directives)  ; DELETE ME
+                 (if (null? directives)
+                   (usage)
+                   (process directives)))
+               (print* (show-cursor)))))
+
+(cond-expand
+  (compiling (main (command-line-arguments)))
+  (else #f))
 
 ; vim: set expandtab:
