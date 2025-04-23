@@ -28,18 +28,18 @@
   (exit 1))
 
 
+;; Convert a human time specification into seconds.
+;; Input numbers can be any mixture of integers, floats, or words.
+;; Unrecognized words are silently ignored, allowing for the use of filler words like "and"
+;; Examples include:
+;;   2.5 days
+;;   3.14159 hours
+;;   four minutes thirty seconds
+;;   3 days 12.5 hours and fifteen seconds
+;;
+;; EXPERIMENTAL Proportional timespecs are passed through.
+;;   These are of the form n% where n is a number.
 (define (timespec->seconds timespec)
-  ;; Convert a human time specification into seconds.
-  ;; Input numbers can be any mixture of integers, floats, or words.
-  ;; Unrecognized words are silently ignored, allowing for the use of filler words like "and"
-  ;; Examples include:
-  ;;   2.5 days
-  ;;   3.14159 hours
-  ;;   four minutes thirty seconds
-  ;;   3 days 12.5 hours and fifteen seconds
-  ;;
-  ;; EXPERIMENTAL Proportional timespecs are passed through.
-  ;;   These are of the form n% where n is a number.
 
   (define (ci-ts str)
     ;; massage input for the enclosing function
@@ -83,12 +83,19 @@
       (else
         (helper (cdr timespec) (cons (car timespec) accum) total-seconds)))))
 
+
 ; predicate for use with (srfi-1 break)
 ;   break a list into a timespec & everything following
 ;   a timespec ends at the words "to" or "for"
 (define (recognize-timespec? item)
   (or (string-ci=? item "to")
       (string-ci=? item "for")))
+
+(define (process-timespec words)
+  (let-values (((timespec rest) (break recognize-timespec? words)))
+    (let ((seconds (timespec->seconds timespec)))
+      (values seconds rest))))
+
 
 ; predicate for use with (srfi-1 break)
 ;   break a list into an action & everything following
@@ -97,26 +104,17 @@
   (or (string-ci=? item "take")
       (string-ci=? item "then")))
 
-
-(define (process-timespec words)
-  (let-values (((timespec rest) (break recognize-timespec? words)))
-    (let ((seconds (timespec->seconds timespec)))
-      (values seconds rest))))
-
-
-; this is pure vanity - strip any trailing comma
-(define (list-strip-trailing-comma! head)
-  (let loop ((lst head))
-    (cond
-      ((null? lst) head)
-      ((null? (cdr lst))
-       (set-car! lst (string-trim-right (car lst) (char-set #\: #\,)))
-       head)
-      (else
-        (loop (cdr lst))))))
-
-
 (define (process-action words)
+  ; this is pure vanity - strip any trailing comma
+  (define (list-strip-trailing-comma! head)
+    (let loop ((lst head))
+      (cond
+        ((null? lst) head)
+        ((null? (cdr lst))
+         (set-car! lst (string-trim-right (car lst) (char-set #\: #\,)))
+         head)
+        (else
+          (loop (cdr lst))))))
   (let-values (((action rest) (break recognize-action? words)))
     (values
       (if (null? action)
