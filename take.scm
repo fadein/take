@@ -1,6 +1,6 @@
 #!/bin/env -S csi -ss
 
-(define *VERSION* "3.0.a")
+(define *VERSION* "3.0.b")
 
 (import (chicken base))
 (import (only (chicken format) fprintf))
@@ -149,14 +149,17 @@
 ;; Returns (values is-budget? budget-seconds rest-words)
 (define (detect-budget words)
   (let loop ((words words) (accum '()))
+      (print   "db:  accum:" accum)  ; DELETE ME
       (cond
         ((null? words)
          (values #f 0 accum))
         ((and (> (length words) 1)
               (string-ci=? (car words) "budget"))
          (let-values (((budget rest) (break recognize-action? (cdr words))))
+           (print "\ndb: budget:" budget)  ; DELETE ME
+           (print   "db:   rest:" rest "\n")  ; DELETE ME
            (let-values (((timespec _) (break recognize-timespec? budget)))
-             (values #t (timespec->seconds timespec) (append accum rest)))))
+             (values #t (timespec->seconds timespec) (append (reverse accum) rest)))))
         (else
          (loop (cdr words) (cons (car words) accum))))))
 
