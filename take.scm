@@ -3,7 +3,7 @@
 (define *VERSION* "3.0.c")
 
 (import (chicken base))
-(import (only (chicken format) fprintf))
+(import (chicken format))
 (import (chicken io))
 (import (chicken irregex))
 (import (chicken port))
@@ -248,39 +248,35 @@
 
 
 ;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
-;; blinking colons
+;; blinking colons.  Uses helper function zero-pad
 (define (seconds->timestamp sec #!optional (blink? #t))
-  (define zero-pad
-    (lambda (n)
-      (if (< -1 n 10)
-        (string-concatenate `("0" ,(number->string n)))
-        (number->string n))))
-  (let ((sec (inexact->exact (truncate sec))))
-    (let* ((hours (quotient sec 3600))
-           (rem (remainder sec 3600))
-           (mins (quotient rem 60))
-           (sec (remainder rem 60))
-           (h?ms (if (zero? hours)
-                     (list mins sec)
-                     (list hours mins sec))))
-      (string-concatenate
-        (let build ((l h?ms))
-          (cons (zero-pad (car l))
-            (if (null? (cdr l))
-              '()
-              (cons (if (and blink? (odd? sec)) "." ":") (build (cdr l))))))))))
-
-
-;; pick an element from lst at random
-(define (random-choice lst)
-  (list-ref lst (pseudo-random-integer (length lst))))
+  (define (zero-pad n)
+    (if (<= 0 n 9)
+      (sprintf "0~a" (number->string n))
+      (number->string n)))
+  (let* ((sec (inexact->exact (truncate sec)))
+         (hours (quotient sec 3600))
+         (rem (remainder sec 3600))
+         (mins (quotient rem 60))
+         (sec (remainder rem 60))
+         (h?ms (if (zero? hours)
+                 (list mins sec)
+                 (list hours mins sec))))
+    (string-intersperse (map zero-pad h?ms) (if (and blink? (odd? sec)) "." ":"))))
 
 
 ;; Given a list of directives alists, print the message and countdown for the given time
 (define (process directives)
+
   (define counters
     (map (lambda (color) (lambda (seconds to-do) (countdown seconds to-do color)))
          '(fg-red fg-green fg-yellow fg-blue fg-magenta fg-cyan fg-white)))
+
+  ;; pick an element from lst at random
+  (define (random-choice lst)
+    (list-ref lst (pseudo-random-integer (length lst))))
+
+
   ;; Calculate fixed budget and apply proportional timespecs
   (let-values (((remaining-budget fixed-total) (calculate-fixed-budget directives)))
     (let ((processed-directives
