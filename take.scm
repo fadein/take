@@ -1,6 +1,6 @@
 #!/bin/env -S csi -ss
 
-(define *VERSION* "3.0.b")
+(define *VERSION* "3.0.c")
 
 (import (chicken base))
 (import (only (chicken format) fprintf))
@@ -200,8 +200,8 @@
                  (fprintf (current-error-port)
                           "Warning: '~a' shortened from ~a to ~a due to budget constraints\n"
                           to-do
-                          (seconds->timestamp requested-seconds)
-                          (seconds->timestamp actual-seconds)
+                          (seconds->timestamp requested-seconds #f)
+                          (seconds->timestamp actual-seconds #f)
                           (cons `((time ,actual-seconds) ,@(cdr this))
                                 (loop rest (- remaining actual-seconds) (+ fixed-total actual-seconds)))))
                 ((<= actual-seconds 0)
@@ -221,10 +221,10 @@
       (cond
         ((< remaining-budget 0)
          (fprintf port "Warning: Fixed timespecs exceed budget by ~a\n"
-                  (seconds->timestamp (abs remaining-budget))))
+                  (seconds->timestamp (abs remaining-budget) #f)))
         ((> remaining-budget 0)
          (fprintf port "Warning: ~a of budget remains unused\n"
-                  (seconds->timestamp remaining-budget)))))))
+                  (seconds->timestamp remaining-budget #f)))))))
 
 
 (define (argv->directives argv)
@@ -249,7 +249,7 @@
 
 ;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
 ;; blinking colons
-(define (seconds->timestamp sec)
+(define (seconds->timestamp sec #!optional (blink? #t))
   (define zero-pad
     (lambda (n)
       (if (< -1 n 10)
@@ -261,13 +261,14 @@
            (mins (quotient rem 60))
            (sec (remainder rem 60))
            (h?ms (if (zero? hours)
-                   (list mins sec)
-                   (list hours mins sec))))
+                     (list mins sec)
+                     (list hours mins sec))))
       (string-concatenate
         (let build ((l h?ms))
-          (if (null? (cdr l))
-            (cons (zero-pad (car l)) '())
-            (cons (zero-pad (car l)) (cons (if (even? sec) ":" ".") (build (cdr l))))))))))
+          (cons (zero-pad (car l))
+            (if (null? (cdr l))
+              '()
+              (cons (if (and blink? (odd? sec)) "." ":") (build (cdr l))))))))))
 
 
 ;; pick an element from lst at random
