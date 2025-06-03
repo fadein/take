@@ -1,6 +1,6 @@
 #!/bin/env -S csi -ss
 
-(define *VERSION* "3.0.c")
+(define *VERSION* "3.0")
 
 (import (chicken base))
 (import (chicken format))
@@ -25,7 +25,8 @@
 
 (define (usage)
   (print "take v" *VERSION*
-         "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ...")
+         "\n\nUsage: take five minutes 20 seconds to ... then take thirty seconds to ..."
+           "\n       take a budget of 7 minutes then take 30% to ... then take 70% to ...")
   (exit 1))
 
 
@@ -201,9 +202,9 @@
                           "Warning: '~a' shortened from ~a to ~a due to budget constraints\n"
                           to-do
                           (seconds->timestamp requested-seconds #f)
-                          (seconds->timestamp actual-seconds #f)
-                          (cons `((time ,actual-seconds) ,@(cdr this))
-                                (loop rest (- remaining actual-seconds) (+ fixed-total actual-seconds)))))
+                          (seconds->timestamp actual-seconds #f))
+                 (cons `((time ,actual-seconds) ,@(cdr this))
+                       (loop rest (- remaining actual-seconds) (+ fixed-total actual-seconds))))
                 ((<= actual-seconds 0)
                  (fprintf (current-error-port) "Warning: No time left for '~a'\n" to-do)
                  (cons `((time 0) ,@(cdr this))
