@@ -29,6 +29,10 @@
   (exit 1))
 
 
+;; Global variable to store the budget
+(define *budget* #f)
+
+
 ;; Detect if a timespec is a percentage value
 ;; Returns percentage-value or #f
 (define (detect-percentage word)
@@ -63,7 +67,6 @@
     (flatten (map (lambda (s) (string-split (string-downcase s) " -,")) str)))
 
   (let helper ((timespec (ci-ts timespec)) (accum '()) (total-seconds 0))
-    (print "        timespec=" timespec)  ; DELETE ME
     (cond
       ((null? timespec)
        total-seconds)
@@ -115,7 +118,6 @@
 (define (process-timespec words)
   (let-values (((timespec rest) (break recognize-timespec? words)))
     (let ((seconds (timespec->seconds timespec)))
-      (print "  process-timespec seconds=" seconds)  ; DELETE ME
       (values seconds rest))))
 
 
@@ -149,22 +151,17 @@
 ;; Returns (values is-budget? budget-seconds rest-words)
 (define (detect-budget words)
   (let loop ((words words) (accum '()))
-      (print   "db:  accum:" accum)  ; DELETE ME
-      (cond
-        ((null? words)
-         (values #f 0 accum))
-        ((and (> (length words) 1)
-              (string-ci=? (car words) "budget"))
-         (let-values (((budget rest) (break recognize-action? (cdr words))))
-           (print "\ndb: budget:" budget)  ; DELETE ME
-           (print   "db:   rest:" rest "\n")  ; DELETE ME
-           (let-values (((timespec _) (break recognize-timespec? budget)))
-             (values #t (timespec->seconds timespec) (append (reverse accum) rest)))))
-        (else
-         (loop (cdr words) (cons (car words) accum))))))
+    (cond
+      ((null? words)
+       (values #f 0 accum))
+      ((and (> (length words) 1)
+            (string-ci=? (car words) "budget"))
+       (let-values (((budget rest) (break recognize-action? (cdr words))))
+         (let-values (((timespec _) (break recognize-timespec? budget)))
+           (values #t (timespec->seconds timespec) (append (reverse accum) rest)))))
+      (else
+        (loop (cdr words) (cons (car words) accum))))))
 
-;; Global variable to store the budget
-(define *budget* #f)
 
 ;; Calculate remaining budget after fixed timespecs
 ;; Returns (values remaining-budget fixed-total)
@@ -173,40 +170,31 @@
     (if (null? directives)
       (values (if *budget* (- *budget* fixed-total) #f) fixed-total)
       (begin
-        (print "cfb directives=" directives) ; DELETE ME
         (let* ((this (car directives))
                (fixed-time (assq 'time this)))
-           (print "cfb       this=" this) ; DELETE ME
-           (print "cfb fixed-time=" fixed-time) ; DELETE ME
-           (if fixed-time
-             (loop (cdr directives) (+ fixed-total (cadr fixed-time)))
-             (loop (cdr directives) fixed-total)))))))
-             
+          (if fixed-time
+            (loop (cdr directives) (+ fixed-total (cadr fixed-time)))
+            (loop (cdr directives) fixed-total)))))))
+
 
 ;; Apply proportional timespecs to original budget, capping at remaining budget
 ;; Returns list of directives with calculated seconds
 (define (apply-proportional-timespecs directives remaining-budget)
-  (print "apt directives:" directives)  ; DELETE ME
-  (print "apt  remaining:" remaining-budget)  ; DELETE ME
   (let loop ((directives directives) (remaining remaining-budget) (fixed-total 0))
-    (cond 
+    (cond
       ((null? directives)
        (emit-budget-warnings fixed-total (or remaining 0))
-       (print "apt DONE!")  ; DELETE ME
        '())
       (else
         (let* ((this (car directives))
                (rest (cdr directives))
-               (proportional (assq 'proportional this))
-               (fixed-time (assq 'time this)))
+               (proportional (assq 'proportional this)))
           (if proportional
             (let* ((percent (cadr proportional))
                    (requested-seconds (inexact->exact (round (* *budget* (/ percent 100)))))
                    (actual-seconds (min requested-seconds remaining))
                    (to-do (string-join (cdr (or (assoc "to" this)
                                                 (assoc "for" this))))))
-              (print "apt  requested-seconds:" requested-seconds)  ; DELETE ME
-              (print "apt     actual-seconds:" actual-seconds)  ; DELETE ME
               (cond
                 ((and (< actual-seconds requested-seconds) (> actual-seconds 0))
                  (fprintf (current-error-port)
@@ -223,54 +211,40 @@
                 (else
                   (cons `((time ,actual-seconds) ,@(cdr this))
                         (loop rest (- remaining actual-seconds) (+ fixed-total actual-seconds))))))
-            (cons this (loop rest remaining (+ (cadr fixed-time) fixed-total)))))))))
+            (cons this (loop rest remaining (+ (cadr (assq 'time this)) fixed-total)))))))))
+
 
 ;; Emit budget-related warnings to stderr
 (define (emit-budget-warnings fixed-total remaining-budget)
-  (print "ebw         *budget*: " *budget*)  ; DELETE ME
-  (print "ebw      fixed-total: " fixed-total)  ; DELETE ME
-  (print "ebw remaining-budget: " remaining-budget)  ; DELETE ME
   (when *budget*
     (let ((port (current-error-port)))
       (cond
         ((< remaining-budget 0)
-         (fprintf port "Warning: Fixed timespecs exceed budget by ~a\n" 
-                 (seconds->timestamp (abs remaining-budget))))
+         (fprintf port "Warning: Fixed timespecs exceed budget by ~a\n"
+                  (seconds->timestamp (abs remaining-budget))))
         ((> remaining-budget 0)
          (fprintf port "Warning: ~a of budget remains unused\n"
-                 (seconds->timestamp remaining-budget)))))))
+                  (seconds->timestamp remaining-budget)))))))
 
-(define argv->directives
-  (let ((i 0))
-    (lambda (argv)
-      (set! i (add1 i))
-      (print i " argv->directives " argv)  ; DELETE ME
-      
-      ;; First pass: look for budget specification
-      (let-values (((is-budget? budget-seconds rest) (detect-budget argv)))
-        (when is-budget?
-          (set! *budget* budget-seconds)
-          (set! argv rest) 
-          (print "The BUDGET is       " *budget*); DELETE ME
-          (print "The REST of argv is " rest); DELETE ME
-          #t)) ;; delete this #t
-      
-      (if (null? argv)
-        '()
-        (let-values (((seconds rest) (process-timespec argv)))
-          (print i "  seconds: " seconds)  ; DELETE ME
-          (print i "     rest: " rest)  ; DELETE ME
-          (let-values (((action rest) (process-action rest)))
-            (print i "   action: " action)  ; DELETE ME
-            (print i "     rest: " rest)  ; DELETE ME
-            (cond
-              ((and (number? seconds) (zero? seconds))
-               (argv->directives rest))
-              ((and (pair? seconds) (eq? (car seconds) 'proportional))
-               (cons `(,seconds ,action) (argv->directives rest)))
-              (else
-                (cons `((time ,seconds) ,action) (argv->directives rest))))))))))
-              
+
+(define (argv->directives argv)
+  ;; First pass: look for budget specification
+  (let-values (((is-budget? budget-seconds rest) (detect-budget argv)))
+    (when is-budget?
+      (set! *budget* budget-seconds)
+      (set! argv rest))
+
+    (if (null? argv)
+      '()
+      (let-values (((seconds rest) (process-timespec argv)))
+        (let-values (((action rest) (process-action rest)))
+          (cond
+            ((and (number? seconds) (zero? seconds))
+             (argv->directives rest))
+            ((and (pair? seconds) (eq? (car seconds) 'proportional))
+             (cons `(,seconds ,action) (argv->directives rest)))
+            (else
+              (cons `((time ,seconds) ,action) (argv->directives rest)))))))))
 
 
 ;; Convert int seconds into string timestamp in the form of M:S or H:M:S with
@@ -287,8 +261,8 @@
            (mins (quotient rem 60))
            (sec (remainder rem 60))
            (h?ms (if (zero? hours)
-                     (list mins sec)
-                     (list hours mins sec))))
+                   (list mins sec)
+                   (list hours mins sec))))
       (string-concatenate
         (let build ((l h?ms))
           (if (null? (cdr l))
@@ -308,11 +282,11 @@
          '(fg-red fg-green fg-yellow fg-blue fg-magenta fg-cyan fg-white)))
   ;; Calculate fixed budget and apply proportional timespecs
   (let-values (((remaining-budget fixed-total) (calculate-fixed-budget directives)))
-    (let ((processed-directives 
+    (let ((processed-directives
             (if *budget*
               (apply-proportional-timespecs directives remaining-budget)
               directives)))
-      
+
       (define (process* directives)
         (when (not (null? directives))
           (let* ((this (car directives))
@@ -344,55 +318,55 @@
   (define restart #f)
   (define paused? #f)
 
-    ;; The lambda invoked by call/cc sets time-left to the initial value of 'seconds'
-    ;; and assigns this continuation to the name 'restart'
-    (let loop ((time-left (call/cc (lambda (k) (set! restart k) seconds))))
-      (when (and (>= time-left 0) (not *cancel-countdown*))
+  ;; The lambda invoked by call/cc sets time-left to the initial value of 'seconds'
+  ;; and assigns this continuation to the name 'restart'
+  (let loop ((time-left (call/cc (lambda (k) (set! restart k) seconds))))
+    (when (and (>= time-left 0) (not *cancel-countdown*))
 
-        (while (char-ready? (current-input-port))
-               (case (read-char)
-                 ((#\return #\newline #\r #\R)
-                  (while (char-ready? (current-input-port)) (read-char))  ; drain STDIN
-                  (restart seconds))
+      (while (char-ready? (current-input-port))
+             (case (read-char)
+               ((#\return #\newline #\r #\R)
+                (while (char-ready? (current-input-port)) (read-char))  ; drain STDIN
+                (restart seconds))
 
-                 ((#\z #\Z #\0)
-                  (set! *cancel-countdown* #t)
-                  (set! time-left 0))
+               ((#\z #\Z #\0)
+                (set! *cancel-countdown* #t)
+                (set! time-left 0))
 
-                 ; add 5% to the timer (+ 1 second to make up for this keypress)
-                 ((#\+ #\=)
-                  (set! time-left
-                    (min seconds (+ 1 time-left (inexact->exact (round (* seconds 0.05)))))))
+               ; add 5% to the timer (+ 1 second to make up for this keypress)
+               ((#\+ #\=)
+                (set! time-left
+                  (min seconds (+ 1 time-left (inexact->exact (round (* seconds 0.05)))))))
 
-                 ; subtract 5% from the timer
-                 ((#\- #\_)
-                  (set! time-left
-                    (max 0 (- time-left (inexact->exact (round (* seconds 0.05)))))))
+               ; subtract 5% from the timer
+               ((#\- #\_)
+                (set! time-left
+                  (max 0 (- time-left (inexact->exact (round (* seconds 0.05)))))))
 
-                 ((#\p #\P #\space)
-                  (set! paused? (not paused?)))
+               ((#\p #\P #\space)
+                (set! paused? (not paused?)))
 
-                 ((#\q #\Q)
-                  (cleanup! 'quit))))
+               ((#\q #\Q)
+                (cleanup! 'quit))))
 
-        (let* (; re-calculate the screen width on each update
-               (secs-per-col (/ *cols* seconds))
-               ; form the message, padded with spaces, putting the reverse attr in the right place
-               (timestamp (seconds->timestamp time-left))
-               (msg (string-pad-right
-                      (if paused? (conc "[PAUSED] " to-do) to-do)
-                      (- *cols* (add1 (string-length timestamp)))))
-               (line (string-append timestamp " " msg))
-               (bar-width (truncate (* time-left secs-per-col)))
-               (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
-               (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
-          (print* "\r" (erase-line) reversed regular))
-        (sleep 1)
-        (if *winched*
-          (begin
-            (set! *winched* #f)
-            (loop time-left))
-          (loop (if paused? time-left (sub1 time-left)))))))
+      (let* (; re-calculate the screen width on each update
+             (secs-per-col (/ *cols* seconds))
+             ; form the message, padded with spaces, putting the reverse attr in the right place
+             (timestamp (seconds->timestamp time-left))
+             (msg (string-pad-right
+                    (if paused? (conc "[PAUSED] " to-do) to-do)
+                    (- *cols* (add1 (string-length timestamp)))))
+             (line (string-append timestamp " " msg))
+             (bar-width (truncate (* time-left secs-per-col)))
+             (reversed (set-text `(reverse-video bold ,color) (string-take line bar-width)))
+             (regular  (set-text `(bold ,color)               (string-drop line bar-width))))
+        (print* "\r" (erase-line) reversed regular))
+      (sleep 1)
+      (if *winched*
+        (begin
+          (set! *winched* #f)
+          (loop time-left))
+        (loop (if paused? time-left (sub1 time-left)))))))
 
 
 
@@ -409,10 +383,10 @@
   (let ((now (current-seconds)))
     (cond
       ((zero? (- now *last-interrupt*))
-        (cleanup! 'skipped-timer))
+       (cleanup! 'skipped-timer))
       (else
-       (set! *cancel-countdown* #t)
-       (set! *last-interrupt* now)))))
+        (set! *cancel-countdown* #t)
+        (set! *last-interrupt* now)))))
 (set-signal-handler! signal/int skip-countdown)
 
 
@@ -449,7 +423,6 @@
              (lambda ()
                ; Parse the command-line arguments into a list of alists
                (let ((directives (argv->directives argv)))
-                 (print "directives: " directives)  ; DELETE ME
                  (if (null? directives)
                    (usage)
                    (process directives)))
