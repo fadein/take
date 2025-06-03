@@ -1,6 +1,6 @@
 #!/bin/env -S csi -ss
 
-(define *VERSION* "3.0")
+(define *VERSION* "3.1")
 
 (import (chicken base))
 (import (chicken format))
@@ -116,6 +116,7 @@
   (or (string-ci=? item "to")
       (string-ci=? item "for")))
 
+
 (define (process-timespec words)
   (let-values (((timespec rest) (break recognize-timespec? words)))
     (let ((seconds (timespec->seconds timespec)))
@@ -192,7 +193,7 @@
                (proportional (assq 'proportional this)))
           (if proportional
             (let* ((percent (cadr proportional))
-                   (requested-seconds (inexact->exact (round (* *budget* (/ percent 100)))))
+                   (requested-seconds (inexact->exact (round (* remaining-budget (/ percent 100)))))
                    (actual-seconds (min requested-seconds remaining))
                    (to-do (string-join (cdr (or (assoc "to" this)
                                                 (assoc "for" this))))))

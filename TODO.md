@@ -1,6 +1,8 @@
 # Bugs
 
 -   When a directive is dropped due to an unparseable timespec, a warning message should be printed
+-   Because of the status of the word "budget", I cannot specify tasks that include it.
+    -   After the 1st budget is detected, return the rest of argv unchanged
 
 # Feature wish list
 
@@ -24,3 +26,5 @@
     *   Timer can be paused
 *   v3.0 enhancements
     *   Support proportional (percentage) timespecs
+*   v3.1
+    *   Proportional timespecs were taken out of the complete budget; now they are figured from the remaining time *after* fixed timespecs are taken out
