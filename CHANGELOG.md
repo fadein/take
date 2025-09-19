@@ -1,5 +1,7 @@
 # Change log
 
+*   v3.2.1
+    *   Don't clear the screen at startup
 *   v3.2
     *   Clear the screen on SIGWINCH to prevent a pile-up of old output
 *   v3.1

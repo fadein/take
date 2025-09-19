@@ -1,7 +1,7 @@
 ;;; take.egg -*- Scheme -*- vim: ft=scheme:
 
 ((synopsis "A natural language countdown timer for the terminal with budget support and visual feedback")
- (version "3.2.0")
+ (version "3.2.1")
  (category tools)
  (license "BSD")
  (author "Erik Falor")

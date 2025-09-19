@@ -1,6 +1,6 @@
 #!/bin/env -S csi -ss
 
-(define *VERSION* "3.2")
+(define *VERSION* "3.2.1")
 
 (import (chicken base))
 (import (chicken format))
@@ -413,7 +413,7 @@
     (set! *rows* rows)
     (set! *cols* cols))
   (set! *winched* sig)
-  (print* (erase-display)))
+  (and (eq? signal/winch sig) (print* (erase-display))))
 
 
 (set-signal-handler! signal/winch window-size-changed!)
