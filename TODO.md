@@ -6,4 +6,7 @@
 
 # Feature wish list
 
--   `take until 3pm to ...`
+-   Save lines of text piped in on STDIN to display on screen above the countdown timer
+    -   In this mode read keystrokes directly from the TTY instead of STDIN
+-   Support command strings of the form `take until 3pm to ...`
+    -   Decide how this should work with budgeting
