@@ -17,7 +17,7 @@ A simple command-line timer tool for time management, inspired by the Pomodoro T
 ## Usage
 
 ```
-take [duration] to [task description] then [duration] to [task description] ...
+take <duration> to <task description> [then take <duration> to <task description> ...]
 ```
 
 ### Examples
@@ -29,17 +29,19 @@ take [duration] to [task description] then [duration] to [task description] ...
 
 -   **Chained timers:**
     ```
-    take 25 minutes to work on the report then take 5 minutes to take a break
+    take 25 minutes to work on the report then take 5 minutes to relax
     ```
 
 -   **Budget-based timers:**
     ```
-    take a budget of 1 hour then take 50% to work on feature A then take 50% to work on feature B
+    take a budget of 1 hour to take 50% to work on feature A then take 50% to work on feature B
     ```
 
 -   **More complex natural language:**
     ```
-    take two and a half hours to finish the prototype
+    take twenty two hours to finish the prototype
+    take a grundle of minutes to grouse at great gritty grumps then take several hours to have a nap
+    take one trillion two billion three million four thousand and five seconds to walk to the moon
     ```
 
 ## Controls
@@ -55,7 +57,7 @@ While a timer is running, you can use the following keys:
 
 ## Installation
 
-This program is written in [Chicken Scheme](https://www.call-cc.org/) and can be installed with `chicken-install`.  Open a shell in this repository and run
+This program is written in [Chicken Scheme](https://www.call-cc.org/) and can be installed with `chicken-install`.  Open a shell in this repository and run:
 
 ```bash
 chicken-install
